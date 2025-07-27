@@ -120,23 +120,30 @@ useEffect(() => {
   };
 
   const buildYearlyChartData = () => {
-    if (!rawAnalytics?.summary) return [];
-    const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    const arr = [];
-    for (let m = 1; m <= 12; m++) {
-      const mm = String(m).padStart(2, '0');
-      const key = `${currentYear}-${mm}`;
-      let expense = 0;
-      if (categoryFilter === 'all') {
-        expense = rawAnalytics.summary[key]?.expense || 0;
-      } else {
+  if (!rawAnalytics?.summary || !rawAnalytics?.categoryBreakdown) return [];
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const arr = [];
+
+      for (let m = 1; m <= 12; m++) {
+        const mm = String(m).padStart(2, '0');
+        const key = `${currentYear}-${mm}`;
+
+        // Start object with monthLabel
+        const monthData = { monthLabel: monthNames[m - 1] };
+
+        // categoryBreakdown is assumed to be { expense: { categoryName: amount, ... } }
         const breakdown = rawAnalytics.categoryBreakdown[key]?.expense || {};
-        expense = breakdown[categoryFilter] || 0;
+
+        // Copy all categories with their expense into monthData
+        for (const [category, amount] of Object.entries(breakdown)) {
+          monthData[category] = amount;
+        }
+
+        arr.push(monthData);
       }
-      arr.push({ monthLabel: monthNames[m - 1], expense });
-    }
-    return arr;
-  };
+      return arr;
+    };
 
   const buildYearlyExpenseList = () => {
     if (!rawAnalytics?.details) return [];
@@ -421,59 +428,75 @@ useEffect(() => {
           </div>
 
           {/** ── BAR CHART ───────────────────────────────────────────── */}
-          <div className="bg-white rounded-lg shadow-md p-4 flex-1">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">
-              {isYearly
-                ? 'Expenses Per Month'
-                : `Expenses by Category (${new Date(
-                    ...selectedMonth.split('-').map((s, i) =>
-                      i === 1 ? parseInt(s) - 1 : parseInt(s)
-                    )
-                  ).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                  })})`}
-            </h3>
+            <div className="bg-white rounded-lg shadow-md p-4 flex-1">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                {isYearly
+                  ? 'Expenses Per Month'
+                  : `Expenses by Category (${new Date(
+                      ...selectedMonth.split('-').map((s, i) =>
+                        i === 1 ? parseInt(s) - 1 : parseInt(s)
+                      )
+                    ).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                    })})`}
+              </h3>
 
-            {chartData.length === 0 ? (
-              <div className="text-center text-gray-500">
-                No data to draw chart.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  {isYearly ? (
-                    <>
-                      <XAxis dataKey="monthLabel" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => formatCurrency(value)}
-                      />
+              {chartData.length === 0 ? (
+                <div className="text-center text-gray-500">
+                  No data to draw chart.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey={isYearly ? 'monthLabel' : 'category'}
+                      tick={{ angle: isYearly ? 0 : -30, textAnchor: 'end' }}
+                      height={isYearly ? undefined : 70}
+                    />
+                    <YAxis />
+                    <Tooltip formatter={(value) => formatCurrency(value)} />
+
+                    {isYearly ? (
+                      expenseCategories?.map((category) => {
+                        const color = getCategoryColor(category);
+                        return (
+                          <Bar
+                            key={category}
+                            dataKey={category}
+                            stackId="a"
+                            name={category}
+                            fill={color?.backgroundColor || '#ccc'}
+                          />
+                        );
+                      })
+                    ) : (
                       <Bar
                         dataKey="expense"
                         name="Expense"
-                        fill="#f87171" /* red-400 */
+                        shape={(props) => {
+                          const { x, y, width, height, payload } = props;
+                          const color = getCategoryColor(payload.category)?.backgroundColor || '#ccc';
+                          return (
+                            <rect
+                              x={x}
+                              y={y}
+                              width={width}
+                              height={height}
+                              fill={color}
+                              rx={6}
+                            />
+                          );
+                        }}
                       />
-                    </>
-                  ) : (
-                    <>
-                      <XAxis dataKey="category" tick={{ angle: -30, textAnchor: 'end' }} height={70} />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value) => formatCurrency(value)}
-                      />
-                      <Bar
-                        dataKey="expense"
-                        name="Expense"
-                        fill="#f87171"
-                      />
-                    </>
-                  )}
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+
         </div>
       </div>
     </div>
