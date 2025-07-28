@@ -1,23 +1,32 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import AddTransaction from '../components/AddTransaction';
-import Analytics from '../components/Analytics';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import AddTransaction from '../components/AddTransaction'
+import Analytics from '../components/Analytics'
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState('add');
-  const [refreshAnalytics, setRefreshAnalytics] = useState(0);
-  const [selectedTransaction, setSelectedTransaction] = useState(null); // ✅ new
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState('add')
+  const [refreshAnalytics, setRefreshAnalytics] = useState(0)
+  const [selectedTransaction, setSelectedTransaction] = useState(null)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) {
+      router.push('/login') // or /signup if preferred
+    }
+  }, [])
 
   const handleTransactionAdded = () => {
-    setRefreshAnalytics((prev) => prev + 1);
-    setSelectedTransaction(null); // clear after editing
-  };
+    setRefreshAnalytics((prev) => prev + 1)
+    setSelectedTransaction(null)
+  }
 
   const handleEditTransaction = (tx) => {
-    setSelectedTransaction(tx);
-    setActiveTab('add');
-  };
+    setSelectedTransaction(tx)
+    setActiveTab('add')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,8 +39,8 @@ export default function Home() {
           <div className="bg-white rounded-lg shadow-md p-1">
             <button
               onClick={() => {
-                setActiveTab('add');
-                setSelectedTransaction(null); // reset form when not editing
+                setActiveTab('add')
+                setSelectedTransaction(null)
               }}
               className={`px-6 py-3 rounded-md font-medium transition-colors ${
                 activeTab === 'add'
@@ -58,7 +67,7 @@ export default function Home() {
           {activeTab === 'add' && (
             <AddTransaction
               onTransactionAdded={handleTransactionAdded}
-              transactionToEdit={selectedTransaction} // ✅ pass to component
+              transactionToEdit={selectedTransaction}
             />
           )}
           {activeTab === 'analytics' && (
@@ -67,5 +76,5 @@ export default function Home() {
         </div>
       </div>
     </div>
-  );
+  )
 }

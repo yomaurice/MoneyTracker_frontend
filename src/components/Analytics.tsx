@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation'; // Add this at the top if not already
+import { authFetch } from '../utils/auth_fetch'
 
 import {
   BarChart,
@@ -88,7 +89,7 @@ useEffect(() => {
         period: 'monthly',
         categories: categoryFilter,
       });
-      const res = await fetch(`${API_BASE_URL}/analytics?${params}`);
+      const res = await authFetch(`${API_BASE_URL}/analytics?${params}`);
       if (!res.ok) {
         console.error('Failed to load analytics:', res.statusText);
         setRawAnalytics(null);
@@ -226,7 +227,7 @@ useEffect(() => {
       if (!window.confirm('Are you sure you want to delete this transaction?')) return;
 
       try {
-        const res = await fetch(`${API_BASE_URL}/transactions/${id}`, {
+        const res = await authFetch(`${API_BASE_URL}/transactions/${id}`, {
           method: 'DELETE',
         });
 

@@ -1,5 +1,5 @@
 'use client';
-
+import { authFetch } from '../utils/auth_fetch'
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -31,21 +31,38 @@ const [isSuccess, setIsSuccess] = useState(false);
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceMonths, setRecurrenceMonths] = useState(1);
 
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/categories/${formData.type}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setCategories(data);
-        if (!formData.category && data.length > 0) {
-          setFormData((prev) => ({ ...prev, category: data[0] }));
-        }
+
+    useEffect(() => {
+      authFetch(`${API_BASE_URL}/categories/${formData.type}`, {
+        method: 'GET',
+        credentials: 'include',
       })
-      .catch((err) => console.error('Failed to fetch categories:', err));
-  }, [formData.type]);
+        .then(res => res.json())
+        .then(data => {
+          setCategories(data);
+        });
+    }, [formData.type]);
+//   useEffect(() => {
+//         authFetch(`${API_BASE_URL}/categories/${formData.type}`,{
+//           method: 'POST',
+//           body: JSON.stringify(data)
+//         })
+//       .then((res) => res.json())
+//       .then((data) => {
+//         setCategories(data);
+//         if (!formData.category && data.length > 0) {
+//           setFormData((prev) => ({ ...prev, category: data[0] }));
+//         }
+//       })
+//       .catch((err) => console.error('Failed to fetch categories:', err));
+//   }, [formData.type]);
 
   useEffect(() => {
     if (id) {
-      fetch(`${API_BASE_URL}/transactions/${id}`)
+    authFetch(`${API_BASE_URL}/transactions/${id}`,{
+          method: 'POST',
+          body: JSON.stringify(data)
+        })
         .then((res) => res.json())
         .then((data) => {
           setFormData({
@@ -112,7 +129,7 @@ useEffect(() => {
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -156,7 +173,7 @@ useEffect(() => {
 const handleAddCategory = async () => {
   if (!newCategory.trim()) return;
 
-  const res = await fetch(`${API_BASE_URL}/categories`, {
+  const res = await authFetch(`${API_BASE_URL}/categories`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: formData.type, name: newCategory.trim() }),
@@ -171,12 +188,12 @@ const handleAddCategory = async () => {
 };
 
 const handleDeleteCategory = async (name) => {
-  const res = await fetch(`${API_BASE_URL}/category/delete/${encodeURIComponent(name)}`, {
+  const res = await authFetch(`${API_BASE_URL}/category/delete/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
 
   if (res.ok) {
-      setIsSuccess(true); // ✅
+    setIsSuccess(true); // ✅
     setCategories((prev) => prev.filter((c) => c !== name));
     if (formData.category === name) {
       setFormData((prev) => ({ ...prev, category: '' }));
