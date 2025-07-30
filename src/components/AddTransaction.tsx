@@ -35,9 +35,10 @@ const [isSuccess, setIsSuccess] = useState(false);
     useEffect(() => {
       authFetch(`${API_BASE_URL}/categories/${formData.type}`, {
         method: 'GET',
-        credentials: 'include',
-      })
-        .then(res => res.json())
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': 'true',
+        }}).then(res => res.json())
         .then(data => {
           setCategories(data);
         });
@@ -61,8 +62,11 @@ const [isSuccess, setIsSuccess] = useState(false);
     if (id) {
     authFetch(`${API_BASE_URL}/transactions/${id}`,{
           method: 'POST',
-          body: JSON.stringify(data)
-        })
+          body: JSON.stringify(data),
+          headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': true,
+        }})
         .then((res) => res.json())
         .then((data) => {
           setFormData({
@@ -254,9 +258,9 @@ const handleDeleteCategory = async (name) => {
       required
     >
       <option value="">Select a category</option>
-      {categories.map((category) => (
-        <option key={category} value={category}>{category}</option>
-      ))}
+      {Array.isArray(categories) && categories.map((category) => (
+  <option key={category} value={category}>{category}</option>
+        ))}
     </select>
 
     <button

@@ -9,22 +9,24 @@ export default function Login() {
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    const res = await fetch('http://localhost:5000/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Credentials': true },
-      body: JSON.stringify({ username, password }),
-    });
+  const res = await fetch('http://localhost:5000/api/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
 
-    if (res.ok) {
-      router.push('/'); // redirect to main app
-    } else {
-      const data = await res.json();
-      setErrorMsg(data.message || 'Login failed');
-    }
-  };
+  const data = await res.json();
+
+  if (res.ok) {
+    localStorage.setItem('token', data.token); // ✅ Store the token
+    router.push('/'); // redirect to main app
+  } else {
+    setErrorMsg(data.message || 'Login failed');
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-300 flex items-center justify-center px-4">

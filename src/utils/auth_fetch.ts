@@ -1,12 +1,17 @@
 export const authFetch = (url: string, options: RequestInit = {}) => {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('token');
+
+  const defaultHeaders: HeadersInit = {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+
   return fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
+      ...defaultHeaders,
       ...(options.headers || {}),
     },
-    credentials: 'include',
-  })
-}
+    credentials: 'include', // Important if backend uses cookies/sessions
+  });
+};
