@@ -73,31 +73,56 @@ useEffect(() => {
 
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [categoryFilter]);
+  fetchAnalytics();
+}, [categoryFilter]);
 
-  const fetchAnalytics = async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({
-        period: 'monthly',
-        categories: categoryFilter,
-      });
-      const res = await authFetch(`${API_BASE_URL}/analytics?${params}`);
-      if (!res.ok) {
-        console.error('Failed to load analytics:', res.statusText);
-        setRawAnalytics(null);
-      } else {
-        const data = await res.json();
-        setRawAnalytics(data);
-      }
-    } catch (e) {
-      console.error(e);
-      setRawAnalytics(null);
-    } finally {
-      setLoading(false);
+useEffect(() => {
+  fetchAnalytics(true); // fetch all for categories on initial mount
+}, []);
+
+const [expenseCategories, setExpenseCategories] = useState([]);
+
+useEffect(() => {
+  const fetchCategories = async () => {
+    const res = await authFetch(`${API_BASE_URL}/categories/expense`);
+    if (res.ok) {
+      const data = await res.json();
+      console.log("Fetched category data:", data);
+      setExpenseCategories(data);
+    } else {
+      console.error("Failed to fetch categories");
     }
   };
+  fetchCategories();
+}, []);
+
+const fetchAnalytics = async (includeAll = false) => {
+  setLoading(true);
+  try {
+    const params = new URLSearchParams({
+      period: 'monthly',
+    });
+
+    // Only apply category filter if not doing "all"
+    if (!includeAll && categoryFilter !== 'all') {
+      params.append('categories', categoryFilter);
+    }
+
+    const res = await authFetch(`${API_BASE_URL}/analytics?${params}`);
+    if (!res.ok) {
+      console.error('Failed to load analytics:', res.statusText);
+      setRawAnalytics(null);
+    } else {
+      const data = await res.json();
+      setRawAnalytics(data);
+    }
+  } catch (e) {
+    console.error(e);
+    setRawAnalytics(null);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const currentYear = new Date().getFullYear().toString();
 
@@ -181,15 +206,15 @@ useEffect(() => {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
-  const expenseCategories = useMemo(() => {
-    if (!rawAnalytics?.categoryBreakdown) return [];
-    const allCategories = new Set();
-    Object.values(rawAnalytics.categoryBreakdown).forEach((entry) => {
-      const expenses = entry.expense || {};
-      Object.keys(expenses).forEach((cat) => allCategories.add(cat));
-    });
-    return Array.from(allCategories).sort();
-  }, [rawAnalytics]);
+//   const expenseCategories = useMemo(() => {
+//     if (!rawAnalytics?.categoryBreakdown) return [];
+//     const allCategories = new Set();
+//     Object.values(rawAnalytics.categoryBreakdown).forEach((entry) => {
+//       const expenses = entry.expense || {};
+//       Object.keys(expenses).forEach((cat) => allCategories.add(cat));
+//     });
+//     return Array.from(allCategories).sort();
+//   }, [rawAnalytics]);
 
   if (loading) return <div className="bg-white p-6 text-center">Loading…</div>;
   if (!rawAnalytics) return <div className="bg-white p-6 text-center">No data available.</div>;
@@ -204,18 +229,7 @@ useEffect(() => {
     const handleEdit = (tx) => {
        onEdit(tx);
     };
-//    const handleEdit = (tx) => {
-//   const query = new URLSearchParams({
-//     id: tx.id,
-//     type: tx.type,
-//     category: tx.category,
-//     amount: tx.amount,
-//     description: tx.description,
-//     date: tx.date,
-//   }).toString();
-//
-//   router.push(`/addTransaction?${query}`);
-// };
+
 
     const handleDelete = async (id) => {
       if (!window.confirm('Are you sure you want to delete this transaction?')) return;
@@ -279,16 +293,16 @@ useEffect(() => {
               Categories
             </label>
           <select
-  value={categoryFilter}
-  onChange={(e) => setCategoryFilter(e.target.value)}
-  className="border p-1 rounded"
->
-  <option value="all">All Categories</option>
-  {expenseCategories.map((cat) => (
-    <option key={cat} value={cat}>
-      {cat}
-    </option>
-  ))}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="border p-1 rounded"
+            >
+              <option value="all">All Categories</option>
+              {expenseCategories.map((cat, idx) => (
+                <option key={idx} value={cat}>
+                  {cat || "(Unnamed Category)"}  {/* fallback for empty names */}
+                </option>
+              ))}
 </select>
 
 
