@@ -15,3 +15,8 @@ export const authFetch = (url: string, options: RequestInit = {}) => {
     credentials: 'include', // Important if backend uses cookies/sessions
   });
 };
+
+export const logout = () => {
+  localStorage.removeItem('token');
+  window.location.href = '/'; // or wherever your login/home page is
+};
