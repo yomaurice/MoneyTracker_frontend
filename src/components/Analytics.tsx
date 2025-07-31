@@ -153,7 +153,7 @@ useEffect(() => {
       if (periodKey.startsWith(currentYear + '-')) {
         allTx = allTx.concat(
           txArray.filter(
-            (tx) => tx.type === 'expense' && (categoryFilter === 'all' || tx.category === categoryFilter)
+            (tx) => (categoryFilter === 'all' || tx.category === categoryFilter)
           )
         );
       }
@@ -182,7 +182,7 @@ useEffect(() => {
     const arr = rawAnalytics.details[selectedMonth] || [];
     return arr
       .filter(
-        (tx) => tx.type === 'expense' && (categoryFilter === 'all' || tx.category === categoryFilter)
+        (tx) => (categoryFilter === 'all' || tx.category === categoryFilter)
       )
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   };

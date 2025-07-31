@@ -43,48 +43,34 @@ const [isSuccess, setIsSuccess] = useState(false);
           setCategories(data);
         });
     }, [formData.type]);
-//   useEffect(() => {
-//         authFetch(`${API_BASE_URL}/categories/${formData.type}`,{
-//           method: 'POST',
-//           body: JSON.stringify(data)
-//         })
-//       .then((res) => res.json())
-//       .then((data) => {
-//         setCategories(data);
-//         if (!formData.category && data.length > 0) {
-//           setFormData((prev) => ({ ...prev, category: data[0] }));
-//         }
-//       })
-//       .catch((err) => console.error('Failed to fetch categories:', err));
-//   }, [formData.type]);
 
   useEffect(() => {
-    if (id) {
-    authFetch(`${API_BASE_URL}/transactions/${id}`,{
-          method: 'POST',
-          body: JSON.stringify(data),
-          headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': true,
-        }})
-        .then((res) => res.json())
-        .then((data) => {
-          setFormData({
-            type: data.type,
-            category: data.category,
-            amount: data.amount.toString(),
-            description: data.description,
-            date: data.date,
-          });
-          setLoading(false);
-        })
-        .catch((err) => {
-          console.error('Failed to load transaction:', err);
-          setMessage('Failed to load transaction');
-          setLoading(false);
-        });
-    }
-  }, [id]);
+  if (id) {
+    authFetch(`${API_BASE_URL}/transactions/${id}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'true',
+      }
+    })
+    .then((res) => res.json())
+    .then((data) => {
+      setFormData({
+        type: data.type,
+        category: data.category,
+        amount: data.amount.toString(),
+        description: data.description,
+        date: data.date,
+      });
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error('Failed to load transaction:', err);
+      setMessage('Failed to load transaction');
+      setLoading(false);
+    });
+  }
+}, [id]);
 
 useEffect(() => {
   if (transactionToEdit) {
