@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation'; // Add this at the top if not already
 import { authFetch } from '../utils/auth_fetch'
+import { useCurrency } from '../context/CurrencyContext';
 
 import {
   BarChart,
@@ -15,10 +16,10 @@ import {
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-const formatCurrency = (amount) => {
+const formatCurrency = (amount, currency) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency,
   }).format(amount || 0);
 };
 
@@ -29,14 +30,6 @@ const getCurrentYearMonth = () => {
 };
 
 export default function Analytics({ onEdit }) {
-//   const router = useRouter();
-//   const [isClient, setIsClient] = useState(false);
-//
-//     // Add this useEffect
-//     useEffect(() => {
-//       setIsClient(true);
-//     }, []);
-
 
   const [viewMode, setViewMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
@@ -50,6 +43,7 @@ export default function Analytics({ onEdit }) {
       }
       return {};
   });
+  const { currency } = useCurrency();
 
 function getCategoryColor(category: string) {
   if (categoryColors[category]) {
@@ -344,7 +338,7 @@ useEffect(() => {
             </span>
           );
         })()}
-      <span className="text-red-600">{formatCurrency(tx.amount)}</span>
+      <span className="text-red-600">{formatCurrency(tx.amount, currency)}</span>
     </div>
 
     <div className="flex justify-between items-center text-xs text-gray-500 mt-0.5">
@@ -393,14 +387,14 @@ useEffect(() => {
                 <div className="bg-green-50 p-3 rounded-lg">
                   <div className="text-sm text-green-600 font-medium">Income</div>
                   <div className="text-2xl font-bold text-green-700">
-                    {formatCurrency(income)}
+                    {formatCurrency(income, currency)}
                   </div>
                 </div>
                 {/* Expenses */}
                 <div className="bg-red-50 p-3 rounded-lg">
                   <div className="text-sm text-red-600 font-medium">Expenses</div>
                   <div className="text-2xl font-bold text-red-700">
-                    {formatCurrency(expense)}
+                    {formatCurrency(expense, currency)}
                   </div>
                 </div>
                 {/* Net */}
@@ -421,7 +415,7 @@ useEffect(() => {
                       net >= 0 ? 'text-blue-700' : 'text-orange-700'
                     }`}
                   >
-                    {formatCurrency(net)}
+                    {formatCurrency(net, currency)}
                   </div>
                 </div>
               </div>
@@ -457,7 +451,7 @@ useEffect(() => {
                       height={isYearly ? undefined : 70}
                     />
                     <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
+                    <Tooltip formatter={(value) => formatCurrency(value, currency)} />
 
                     {isYearly ? (
                       expenseCategories?.map((category) => {
