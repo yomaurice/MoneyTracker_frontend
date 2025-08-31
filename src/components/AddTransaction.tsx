@@ -177,7 +177,7 @@ const handleAddCategory = async () => {
   }
 };
 
-const handleDeleteCategory = async (name) => {
+const handleDeleteCategory = async (name: any) => {
   const res = await authFetch(`${API_BASE_URL}/category/delete/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
