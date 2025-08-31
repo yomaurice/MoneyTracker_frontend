@@ -108,7 +108,7 @@ useEffect(() => {
     const url = id ? `${API_BASE_URL}/transactions/${id}` : `${API_BASE_URL}/transactions`;
     const method = id ? 'PUT' : 'POST';
 
-    const payload = {
+    const payload: any = {
       ...formData,
       amount: parseFloat(formData.amount),
     };
