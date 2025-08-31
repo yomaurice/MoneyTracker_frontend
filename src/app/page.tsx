@@ -28,7 +28,7 @@ export default function Home() {
     setSelectedTransaction(null)
   }
 
-  const handleEditTransaction = (tx: Transaction) => {
+  const handleEditTransaction = (tx: AddTransaction) => {
     setSelectedTransaction(tx)
     setActiveTab('add')
   }
