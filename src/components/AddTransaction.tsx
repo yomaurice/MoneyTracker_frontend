@@ -96,7 +96,7 @@ useEffect(() => {
     setRecurrenceMonths(1);
   }
 }, [transactionToEdit, idFromQuery]);
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: any) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
