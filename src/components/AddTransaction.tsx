@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-export default function AddTransaction({ onTransactionAdded, transactionToEdit }) {
+export default function AddTransaction({ onTransactionAdded, transactionToEdit }: { onTransactionAdded: any, transactionToEdit?: any }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
