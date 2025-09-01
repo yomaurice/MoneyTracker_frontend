@@ -29,7 +29,8 @@ const getCurrentYearMonth = () => {
   return `${d.getFullYear()}-${mm}`;
 };
 
-export default function Analytics({ onEdit: any }) {
+export default function Analytics({ onEdit }: { onEdit: (id: string) => void }) {
+
 
   const [viewMode, setViewMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
