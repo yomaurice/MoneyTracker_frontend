@@ -16,7 +16,7 @@ import {
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-const formatCurrency = (amount, currency) => {
+const formatCurrency = (amount: number, currency: string): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
