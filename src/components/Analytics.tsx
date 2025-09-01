@@ -58,7 +58,7 @@ function getCategoryColor(category: string) {
 
   const newColor = { backgroundColor, color };
 
-  setCategoryColors((prev) => ({
+    setCategoryColors((prev: Record<string, { backgroundColor: string; color: string }>) => ({
     ...prev,
     [category]: newColor,
   }));
