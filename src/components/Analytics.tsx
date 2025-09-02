@@ -7,6 +7,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import {
   BarChart,
   Bar,
+  BarProps,
   XAxis,
   YAxis,
   Tooltip,
@@ -530,7 +531,7 @@ const fetchAnalytics = async (includeAll = false) => {
                       <Bar
                         dataKey="expense"
                         name="Expense"
-                        shape={(props) => {
+                        shape={(props: BarProps) => {
                           const { x, y, width, height, payload } = props;
                           const color = getCategoryColor(payload.category)?.backgroundColor || '#ccc';
                           return (
