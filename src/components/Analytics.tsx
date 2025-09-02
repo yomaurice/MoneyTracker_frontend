@@ -531,9 +531,9 @@ const fetchAnalytics = async (includeAll = false) => {
                       <Bar
                         dataKey="expense"
                         name="Expense"
-                        shape={(props: BarProps) => {
+                        shape={(props: RectangleProps & { payload?: any }) => {
                           const { x, y, width, height, payload } = props;
-                          const color = getCategoryColor(payload.category)?.backgroundColor || '#ccc';
+                          const color = payload?.category ? getCategoryColor(payload.category)?.backgroundColor || '#ccc' : '#ccc';
                           return (
                             <rect
                               x={x}
