@@ -358,14 +358,15 @@ const fetchAnalytics = async (includeAll = false) => {
             <h3 className="text-lg font-semibold mb-3 text-gray-800">
               {isYearly
                 ? `Latest Expenses (${currentYear})`
-                : `Expenses in ${new Date(
-                    ...selectedMonth.split('-').map((s, i) =>
-                      i === 1 ? parseInt(s) - 1 : parseInt(s)
-                    )
-                  ).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                  })}`}
+                : (() => {
+                    const [year, month, day] = selectedMonth
+                      .split('-')
+                      .map((s, i) => (i === 1 ? parseInt(s) - 1 : parseInt(s)));
+                    return `Expenses in ${new Date(year, month, day).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                    })}`;
+                  })()}
             </h3>
             <div className="overflow-y-auto flex-1">
               {expenseList.length === 0 && (
