@@ -529,23 +529,16 @@ const fetchAnalytics = async (includeAll = false) => {
                       })
                     ) : (
                       <Bar
-                        dataKey="expense"
-                        name="Expense"
-                        shape={(props: RectangleProps & { payload?: any }) => {
-                          const { x, y, width, height, payload } = props;
-                          const color = payload?.category ? getCategoryColor(payload.category)?.backgroundColor || '#ccc' : '#ccc';
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={color}
-                              rx={6}
-                            />
-                          );
-                        }}
-                      />
+                          dataKey="expense"
+                          name="Expense"
+                          shape={(props: any) => {
+                            const { x, y, width, height, payload } = props;
+                            const color = payload?.category
+                              ? getCategoryColor(payload.category)?.backgroundColor || '#ccc'
+                              : '#ccc';
+                            return <rect x={x} y={y} width={width} height={height} fill={color} rx={6} />;
+                          }}
+                        />
                     )}
                   </BarChart>
                 </ResponsiveContainer>
