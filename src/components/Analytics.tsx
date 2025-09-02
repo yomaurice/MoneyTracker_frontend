@@ -270,7 +270,7 @@ const fetchAnalytics = async (includeAll = false) => {
     };
 
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: any) => {
       if (!window.confirm('Are you sure you want to delete this transaction?')) return;
 
       try {
