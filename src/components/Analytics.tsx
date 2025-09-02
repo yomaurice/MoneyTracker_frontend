@@ -479,17 +479,18 @@ const fetchAnalytics = async (includeAll = false) => {
           {/** ── BAR CHART ───────────────────────────────────────────── */}
             <div className="bg-white rounded-lg shadow-md p-4 flex-1">
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
-                {isYearly
-                  ? 'Expenses Per Month'
-                  : `Expenses by Category (${new Date(
-                      ...selectedMonth.split('-').map((s, i) =>
-                        i === 1 ? parseInt(s) - 1 : parseInt(s)
-                      )
-                    ).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                    })})`}
-              </h3>
+                  {isYearly
+                    ? 'Expenses Per Month'
+                    : `Expenses by Category (${(() => {
+                        const [year, month, day] = selectedMonth
+                          .split('-')
+                          .map((s, i) => (i === 1 ? parseInt(s) - 1 : parseInt(s)));
+                        return new Date(year, month, day).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                        });
+                      })()})`}
+                </h3>
 
               {chartData.length === 0 ? (
                 <div className="text-center text-gray-500">
