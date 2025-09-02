@@ -175,8 +175,12 @@ const fetchAnalytics = async (includeAll = false) => {
         const mm = String(m).padStart(2, '0');
         const key = `${currentYear}-${mm}`;
 
-        // Start object with monthLabel
-        const monthData = { monthLabel: monthNames[m - 1] };
+        type MonthData = {
+          monthLabel: string;
+          [category: string]: number | string;
+        };
+
+        const monthData: MonthData = { monthLabel: monthNames[m - 1] };
 
         // categoryBreakdown is assumed to be { expense: { categoryName: amount, ... } }
         const breakdown = rawAnalytics.categoryBreakdown[key]?.expense || {};
