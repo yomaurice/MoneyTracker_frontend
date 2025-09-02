@@ -507,7 +507,11 @@ const fetchAnalytics = async (includeAll = false) => {
                       height={isYearly ? undefined : 70}
                     />
                     <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(value, currency)} />
+                    <Tooltip
+                      formatter={(value) =>
+                        formatCurrency(Number(value ?? 0), currency)
+                      }
+                    />
 
                     {isYearly ? (
                       expenseCategories?.map((category) => {
