@@ -7,7 +7,7 @@ import { useCurrency } from '../context/CurrencyContext';
 import {
   BarChart,
   Bar,
-  BarProps,
+  RectangleProps ,
   XAxis,
   YAxis,
   Tooltip,
