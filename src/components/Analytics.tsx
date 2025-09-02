@@ -265,7 +265,7 @@ const fetchAnalytics = async (includeAll = false) => {
   const expenseList = isYearly ? buildYearlyExpenseList() : buildMonthlyExpenseList();
 
 
-    const handleEdit = (tx) => {
+    const handleEdit = (tx: any) => {
        onEdit(tx);
     };
 
