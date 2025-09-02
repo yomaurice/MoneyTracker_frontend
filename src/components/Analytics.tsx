@@ -197,7 +197,16 @@ const fetchAnalytics = async (includeAll = false) => {
 
   const buildYearlyExpenseList = () => {
     if (!rawAnalytics?.details) return [];
-    let allTx = [];
+
+    export interface Transaction {
+          id: number;
+          type: 'income' | 'expense';
+          category: string;
+          amount: number;
+          description?: string;
+          date: string; // formatted as 'YYYY-MM-DD'
+        }
+    let allTx: Transaction[] = [];
     Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
       if (periodKey.startsWith(currentYear + '-')) {
         allTx = allTx.concat(
