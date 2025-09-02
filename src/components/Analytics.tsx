@@ -198,7 +198,7 @@ const fetchAnalytics = async (includeAll = false) => {
   const buildYearlyExpenseList = () => {
     if (!rawAnalytics?.details) return [];
 
-    export interface Transaction {
+    interface Transaction {
           id: number;
           type: 'income' | 'expense';
           category: string;
