@@ -502,7 +502,8 @@ const fetchAnalytics = async (includeAll = false) => {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey={isYearly ? 'monthLabel' : 'category'}
-                      tick={{ angle: isYearly ? 0 : -30, textAnchor: 'end' }}
+                      angle={isYearly ? 0 : -30}
+                      textAnchor={isYearly ? 'middle' : 'end'}
                       height={isYearly ? undefined : 70}
                     />
                     <YAxis />
