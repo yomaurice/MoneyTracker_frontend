@@ -203,7 +203,7 @@ const fetchAnalytics = async (includeAll = false) => {
           type: 'income' | 'expense';
           category: string;
           amount: number;
-          description?: string;
+          description: string | null;
           date: string; // formatted as 'YYYY-MM-DD'
         }
     let allTx: Transaction[] = [];
