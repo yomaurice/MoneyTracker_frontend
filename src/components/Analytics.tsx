@@ -35,11 +35,26 @@ export default function Analytics({ onEdit }: { onEdit: (id: string) => void }) 
 interface AnalyticsResponse {
   summary: {
     [period: string]: {
-      income?: number;
-      expense?: number;
+      income: number;
+      expense: number;
     };
   };
-  // you can add more fields here if backend returns them
+  categoryBreakdown: {
+    [period: string]: {
+      income: { [category: string]: number };
+      expense: { [category: string]: number };
+    };
+  };
+  details: {
+    [period: string]: {
+      id: number;
+      type: 'income' | 'expense';
+      category: string;
+      amount: number;
+      description: string | null;
+      date: string;
+    }[];
+  };
 }
 
   const [rawAnalytics, setRawAnalytics] = useState<AnalyticsResponse | null>(null);
