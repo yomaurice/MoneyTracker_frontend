@@ -32,9 +32,19 @@ const getCurrentYearMonth = () => {
 export default function Analytics({ onEdit }: { onEdit: (id: string) => void }) {
 
 
+interface AnalyticsResponse {
+  summary: {
+    [period: string]: {
+      income?: number;
+      expense?: number;
+    };
+  };
+  // you can add more fields here if backend returns them
+}
+
+  const [rawAnalytics, setRawAnalytics] = useState<AnalyticsResponse | null>(null);
   const [viewMode, setViewMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
-  const [rawAnalytics, setRawAnalytics] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [categoryColors, setCategoryColors] = useState(() => {
