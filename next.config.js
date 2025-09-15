@@ -4,11 +4,8 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: "/api/:path*",
-        destination:
-          process.env.NODE_ENV === "production"
-            ? "https://your-backend.onrender.com/api/:path*"
-            : "http://localhost:5000/api/:path*",
+        source: '/api/:path*',
+        destination: `${process.env.BACKEND_URL}/api/:path*`,
       },
     ];
   },
