@@ -15,7 +15,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-const API_BASE_URL = '${process.env.BACKEND_URL}/';
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const formatCurrency = (amount: number, currency: string): string => {
   return new Intl.NumberFormat('en-US', {
