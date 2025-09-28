@@ -111,7 +111,7 @@ const [expenseCategories, setExpenseCategories] = useState([]);
 
 useEffect(() => {
   const fetchCategories = async () => {
-    const res = await authFetch(`${API_BASE_URL}/categories/expense`);
+    const res = await authFetch(`${API_BASE_URL}/api/categories/expense`);
     if (res.ok) {
       const data = await res.json();
       console.log("Fetched category data:", data);
@@ -135,7 +135,7 @@ const fetchAnalytics = async (includeAll = false) => {
       params.append('categories', categoryFilter);
     }
 
-    const res = await authFetch(`${API_BASE_URL}/analytics?${params}`);
+    const res = await authFetch(`${API_BASE_URL}/api/analytics?${params}`);
     if (!res.ok) {
       console.error('Failed to load analytics:', res.statusText);
       setRawAnalytics(null);
@@ -275,7 +275,7 @@ const fetchAnalytics = async (includeAll = false) => {
       if (!window.confirm('Are you sure you want to delete this transaction?')) return;
 
       try {
-        const res = await authFetch(`${API_BASE_URL}/transactions/${id}`, {
+        const res = await authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
           method: 'DELETE',
         });
 

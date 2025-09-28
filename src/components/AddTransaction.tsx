@@ -33,7 +33,7 @@ const [isSuccess, setIsSuccess] = useState(false);
 
 
     useEffect(() => {
-      authFetch(`${API_BASE_URL}/categories/${formData.type}`, {
+      authFetch(`${API_BASE_URL}/api/categories/${formData.type}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -46,7 +46,7 @@ const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
   if (id) {
-    authFetch(`${API_BASE_URL}/transactions/${id}`, {
+    authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ useEffect(() => {
     e.preventDefault();
     setLoading(true);
 
-    const url = id ? `${API_BASE_URL}/transactions/${id}` : `${API_BASE_URL}/transactions`;
+    const url = id ? `${API_BASE_URL}/api/transactions/${id}` : `${API_BASE_URL}/api/transactions`;
     const method = id ? 'PUT' : 'POST';
 
     const payload: any = {
@@ -163,7 +163,7 @@ useEffect(() => {
 const handleAddCategory = async () => {
   if (!newCategory.trim()) return;
 
-  const res = await authFetch(`${API_BASE_URL}/categories`, {
+  const res = await authFetch(`${API_BASE_URL}/api/categories`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: formData.type, name: newCategory.trim() }),
@@ -178,7 +178,7 @@ const handleAddCategory = async () => {
 };
 
 const handleDeleteCategory = async (name: any) => {
-  const res = await authFetch(`${API_BASE_URL}/category/delete/${encodeURIComponent(name)}`, {
+  const res = await authFetch(`${API_BASE_URL}/api/category/delete/${encodeURIComponent(name)}`, {
     method: 'DELETE',
   });
 
