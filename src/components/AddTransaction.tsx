@@ -3,7 +3,7 @@ import { authFetch } from '../utils/auth_fetch'
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = '${process.env.BACKEND_URL}';
 
 export default function AddTransaction({ onTransactionAdded, transactionToEdit }: { onTransactionAdded: any, transactionToEdit?: any }) {
   const router = useRouter();
