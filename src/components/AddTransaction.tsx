@@ -44,23 +44,38 @@ const [isSuccess, setIsSuccess] = useState(false);
         });
     }, [formData.type]);
 
-  useEffect(() => {
+useEffect(() => {
   if (id) {
     (async () => {
       try {
+        console.log("🔄 Fetching transaction", id);
+
         // 1. Fetch transaction
         const res = await authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
+
+        if (!res.ok) {
+          throw new Error(`Transaction fetch failed: ${res.status}`);
+        }
+
         const data = await res.json();
+        console.log("✅ Transaction fetched:", data);
 
         // 2. Fetch categories for this transaction type
         const catRes = await authFetch(`${API_BASE_URL}/api/categories/${data.type}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
+
+        if (!catRes.ok) {
+          throw new Error(`Categories fetch failed: ${catRes.status}`);
+        }
+
         const cats = await catRes.json();
+        console.log("📂 Categories fetched:", cats);
+
         setCategories(cats);
 
         // 3. Set form data AFTER categories are loaded
@@ -74,13 +89,14 @@ const [isSuccess, setIsSuccess] = useState(false);
 
         setLoading(false);
       } catch (err) {
-        console.error('Failed to load transaction:', err);
+        console.error('❌ Failed to load transaction or categories:', err);
         setMessage('Failed to load transaction');
         setLoading(false);
       }
     })();
   }
 }, [id]);
+
 
 
 useEffect(() => {
