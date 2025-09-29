@@ -46,31 +46,42 @@ const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
   if (id) {
-    authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': 'true',
+    (async () => {
+      try {
+        // 1. Fetch transaction
+        const res = await authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const data = await res.json();
+
+        // 2. Fetch categories for this transaction type
+        const catRes = await authFetch(`${API_BASE_URL}/api/categories/${data.type}`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        const cats = await catRes.json();
+        setCategories(cats);
+
+        // 3. Set form data AFTER categories are loaded
+        setFormData({
+          type: data.type,
+          category: data.category,
+          amount: data.amount.toString(),
+          description: data.description,
+          date: data.date,
+        });
+
+        setLoading(false);
+      } catch (err) {
+        console.error('Failed to load transaction:', err);
+        setMessage('Failed to load transaction');
+        setLoading(false);
       }
-    })
-    .then((res) => res.json())
-    .then((data) => {
-      setFormData({
-        type: data.type,
-        category: data.category,
-        amount: data.amount.toString(),
-        description: data.description,
-        date: data.date,
-      });
-      setLoading(false);
-    })
-    .catch((err) => {
-      console.error('Failed to load transaction:', err);
-      setMessage('Failed to load transaction');
-      setLoading(false);
-    });
+    })();
   }
 }, [id]);
+
 
 useEffect(() => {
   if (transactionToEdit) {
