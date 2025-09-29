@@ -9,10 +9,11 @@ export default function Login() {
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
+ const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
  const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  const res = await fetch('/api/login', {
+  const res = await fetch('${API_BASE_URL}/api/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),

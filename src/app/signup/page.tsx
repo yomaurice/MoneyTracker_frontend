@@ -9,10 +9,11 @@ export default function Signup() {
   const [errorMsg, setErrorMsg] = useState('');
   const router = useRouter();
 
+  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const res = await fetch('/api/signup', {
+    const res = await fetch('${API_BASE_URL}/api/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
