@@ -1,21 +1,22 @@
 'use client';
+
 import { authFetch } from '../utils/auth_fetch'
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export default function AddTransaction({ onTransactionAdded, transactionToEdit }: { onTransactionAdded: any, transactionToEdit?: any }) {
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
-const idFromQuery = searchParams.get('id');
-const id = transactionToEdit?.id ?? idFromQuery;
+  const idFromQuery = searchParams.get('id');
+  const id = transactionToEdit?.id ?? idFromQuery;
 
-const [showCategoryEditor, setShowCategoryEditor] = useState(false);
-const [newCategory, setNewCategory] = useState('');
-const [isSuccess, setIsSuccess] = useState(false);
-
+  const [showCategoryEditor, setShowCategoryEditor] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
 
   const [formData, setFormData] = useState({
     type: 'expense',
@@ -25,60 +26,42 @@ const [isSuccess, setIsSuccess] = useState(false);
     date: new Date().toISOString().split('T')[0],
   });
 
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(!!id);
   const [message, setMessage] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceMonths, setRecurrenceMonths] = useState(1);
 
+  const initialized = useRef(false);
 
-    useEffect(() => {
-      authFetch(`${API_BASE_URL}/api/categories/${formData.type}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'true',
-        }}).then(res => res.json())
-        .then(data => {
-          setCategories(data);
-        });
-    }, [formData.type]);
+  // ------------------------
+  // 1️⃣ Load Categories when type changes
+  // ------------------------
+  useEffect(() => {
+    authFetch(`${API_BASE_URL}/api/categories/${formData.type}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (Array.isArray(data)) {
+        setCategories(data);
+      }
+    });
+  }, [formData.type]);
 
-useEffect(() => {
-  if (id) {
-    (async () => {
-      try {
-        console.log("🔄 Fetching transaction", id);
+  // ------------------------
+  // 2️⃣ Load existing transaction for editing
+  // ------------------------
+  useEffect(() => {
+    if (!id) return;
 
-        // 1. Fetch transaction
-        const res = await authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!res.ok) {
-          throw new Error(`Transaction fetch failed: ${res.status}`);
-        }
-
-        const data = await res.json();
-        console.log("✅ Transaction fetched:", data);
-
-        // 2. Fetch categories for this transaction type
-        const catRes = await authFetch(`${API_BASE_URL}/api/categories/${data.type}`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!catRes.ok) {
-          throw new Error(`Categories fetch failed: ${catRes.status}`);
-        }
-
-        const cats = await catRes.json();
-        console.log("📂 Categories fetched:", cats);
-
-        setCategories(cats);
-
-        // 3. Set form data AFTER categories are loaded
+    authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    })
+      .then(res => res.json())
+      .then(data => {
         setFormData({
           type: data.type,
           category: data.category,
@@ -86,46 +69,57 @@ useEffect(() => {
           description: data.description,
           date: data.date,
         });
-
         setLoading(false);
-      } catch (err) {
-        console.error('❌ Failed to load transaction or categories:', err);
+      })
+      .catch(err => {
+        console.error('Failed to load transaction:', err);
         setMessage('Failed to load transaction');
         setLoading(false);
-      }
-    })();
-  }
-}, [id]);
+      });
+  }, [id]);
 
+  // ------------------------
+  // 3️⃣ If editing from parent (Analytics → Edit)
+  // ------------------------
+  useEffect(() => {
+    if (transactionToEdit) {
+      setFormData({
+        type: transactionToEdit.type,
+        category: transactionToEdit.category,
+        amount: transactionToEdit.amount.toString(),
+        description: transactionToEdit.description,
+        date: transactionToEdit.date,
+      });
+    }
+  }, [transactionToEdit]);
 
+  // ------------------------
+  // 4️⃣ Reset form ONLY once when creating a new transaction
+  //    ❗ This was the cause of your disappearing categories!
+  // ------------------------
+  useEffect(() => {
+    if (!initialized.current && !transactionToEdit && !idFromQuery) {
+      initialized.current = true;
 
-useEffect(() => {
-  if (transactionToEdit) {
-    setFormData({
-      type: transactionToEdit.type,
-      category: transactionToEdit.category,
-      amount: transactionToEdit.amount.toString(),
-      description: transactionToEdit.description,
-      date: transactionToEdit.date,
-    });
-  }
-}, [transactionToEdit]);
-useEffect(() => {
-  if (!transactionToEdit && !idFromQuery) {
-    setFormData({
-      type: 'expense',
-      category: '',
-      amount: '',
-      description: '',
-      date: new Date().toISOString().split('T')[0],
-    });
-    setIsRecurring(false);
-    setRecurrenceMonths(1);
-  }
-}, [transactionToEdit, idFromQuery]);
+      setFormData({
+        type: 'expense',
+        category: '',
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0],
+      });
+
+      setIsRecurring(false);
+      setRecurrenceMonths(1);
+    }
+  }, []);
+
+  // ------------------------
+  // Handlers
+  // ------------------------
   const handleInputChange = (e: any) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: any) => {
@@ -153,10 +147,11 @@ useEffect(() => {
       });
 
       if (response.ok) {
-        setIsSuccess(true); // ✅
+        setIsSuccess(true);
         setMessage(id ? 'Transaction updated!' : 'Transaction added!');
         onTransactionAdded?.();
 
+        // Reset for new transaction
         setFormData({
           type: 'expense',
           category: '',
@@ -164,15 +159,13 @@ useEffect(() => {
           description: '',
           date: new Date().toISOString().split('T')[0],
         });
+
         setIsRecurring(false);
         setRecurrenceMonths(1);
 
-        setTimeout(() => {
-          setMessage('');
-//           router.push('/analytics');
-        }, 1000);
+        setTimeout(() => setMessage(''), 1200);
       } else {
-        setIsSuccess(false); // ❌
+        setIsSuccess(false);
         const data = await response.json();
         setMessage(data.error || 'Failed to save transaction');
       }
@@ -183,42 +176,46 @@ useEffect(() => {
       setLoading(false);
     }
   };
+
   const handleToggleCategoryEditor = () => {
-  setShowCategoryEditor((prev) => !prev);
-};
+    setShowCategoryEditor(prev => !prev);
+  };
 
-const handleAddCategory = async () => {
-  if (!newCategory.trim()) return;
+  const handleAddCategory = async () => {
+    if (!newCategory.trim()) return;
 
-  const res = await authFetch(`${API_BASE_URL}/api/categories`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type: formData.type, name: newCategory.trim() }),
-  });
+    const res = await authFetch(`${API_BASE_URL}/api/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: formData.type, name: newCategory.trim() }),
+    });
 
-  if (res.ok) {
-    setIsSuccess(true); // ✅
-    const updatedCategories = await res.json();
-    setCategories(updatedCategories);
-    setNewCategory('');
-  }
-};
-
-const handleDeleteCategory = async (name: any) => {
-  const res = await authFetch(`${API_BASE_URL}/api/category/delete/${encodeURIComponent(name)}`, {
-    method: 'DELETE',
-  });
-
-  if (res.ok) {
-    setIsSuccess(true); // ✅
-    setCategories((prev) => prev.filter((c) => c !== name));
-    if (formData.category === name) {
-      setFormData((prev) => ({ ...prev, category: '' }));
-      console.log("Deleted category:", name);
+    if (res.ok) {
+      setIsSuccess(true);
+      const updatedCategories = await res.json();
+      setCategories(updatedCategories);
+      setNewCategory('');
     }
-  }
-};
+  };
 
+  const handleDeleteCategory = async (name: string) => {
+    const res = await authFetch(`${API_BASE_URL}/api/category/delete/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+
+    if (res.ok) {
+      setIsSuccess(true);
+      setCategories(prev => prev.filter(c => c !== name));
+
+      if (formData.category === name) {
+        setFormData(prev => ({ ...prev, category: '' }));
+      }
+    }
+  };
+
+  // ------------------------
+  // Rendering
+  // ------------------------
   if (loading) return <div>Loading...</div>;
 
   return (
@@ -228,10 +225,10 @@ const handleDeleteCategory = async (name: any) => {
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+
+        {/* Type */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Transaction Type *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Transaction Type *</label>
           <div className="flex space-x-4">
             <label className="flex items-center">
               <input
@@ -244,6 +241,7 @@ const handleDeleteCategory = async (name: any) => {
               />
               <span className="text-green-600 font-medium">Income</span>
             </label>
+
             <label className="flex items-center">
               <input
                 type="radio"
@@ -258,75 +256,77 @@ const handleDeleteCategory = async (name: any) => {
           </div>
         </div>
 
-       <div>
-  <label className="block text-sm font-medium text-gray-700 mb-2">
-    Category *
-  </label>
-  <div className="flex items-center gap-4">
-    <select
-      name="category"
-      value={formData.category}
-      onChange={handleInputChange}
-      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-      required
-    >
-      <option value="">Select a category</option>
-      {Array.isArray(categories) && categories.map((category) => (
-  <option key={category} value={category}>{category}</option>
-        ))}
-    </select>
+        {/* Category */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Category *</label>
 
-    <button
-      type="button"
-      onClick={handleToggleCategoryEditor}
-      className="text-sm text-blue-600 hover:underline"
-    >
-      {showCategoryEditor ? 'Close' : 'Edit Categories'}
-    </button>
-  </div>
+          <div className="flex items-center gap-4">
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleInputChange}
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+              required
+            >
+              <option value="">Select a category</option>
 
-  {showCategoryEditor && (
-    <div className="mt-4 border border-gray-200 p-4 rounded-md bg-gray-50">
-      <h4 className="text-sm font-semibold mb-2">Manage Categories</h4>
-      <ul className="space-y-1 mb-3">
-        {categories.map((cat) => (
-          <li key={cat} className="flex justify-between items-center">
-            <span>{cat}</span>
+              {categories.map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+
             <button
               type="button"
-              onClick={() => handleDeleteCategory(cat)}
-              className="text-xs text-red-600 hover:underline"
+              onClick={handleToggleCategoryEditor}
+              className="text-sm text-blue-600 hover:underline"
             >
-              Delete
+              {showCategoryEditor ? 'Close' : 'Edit Categories'}
             </button>
-          </li>
-        ))}
-      </ul>
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="New category"
-          value={newCategory}
-          onChange={(e) => setNewCategory(e.target.value)}
-          className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm"
-        />
-        <button
-          type="button"
-          onClick={handleAddCategory}
-          className="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-        >
-          Add
-        </button>
-      </div>
-    </div>
-  )}
-</div>
+          </div>
 
+          {showCategoryEditor && (
+            <div className="mt-4 border border-gray-200 p-4 rounded-md bg-gray-50">
+              <h4 className="text-sm font-semibold mb-2">Manage Categories</h4>
 
+              <ul className="space-y-1 mb-3">
+                {categories.map(cat => (
+                  <li key={cat} className="flex justify-between items-center">
+                    <span>{cat}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(cat)}
+                      className="text-xs text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="New category"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleAddCategory}
+                  className="text-sm bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Amount */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Amount *
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
           <input
             type="number"
             name="amount"
@@ -335,38 +335,37 @@ const handleDeleteCategory = async (name: any) => {
             step="0.01"
             min="0.01"
             placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
             required
           />
         </div>
 
+        {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Description
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
           <textarea
             name="description"
             value={formData.description}
             onChange={handleInputChange}
             rows={3}
             placeholder="Optional description..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
         </div>
 
+        {/* Date */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Date
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
           <input
             type="date"
             name="date"
             value={formData.date}
             onChange={handleInputChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
         </div>
 
+        {/* Recurring */}
         <div>
           <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
             <input
@@ -377,22 +376,22 @@ const handleDeleteCategory = async (name: any) => {
             />
             Recurring Monthly
           </label>
+
           {isRecurring && (
             <div className="mt-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Number of Months
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Number of Months</label>
               <input
                 type="number"
                 min="1"
                 value={recurrenceMonths}
                 onChange={(e) => setRecurrenceMonths(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
           )}
         </div>
 
+        {/* Submit */}
         <button
           type="submit"
           disabled={loading}
@@ -406,14 +405,13 @@ const handleDeleteCategory = async (name: any) => {
         {message && (
           <div
             className={`p-3 rounded-md text-center ${
-                isSuccess
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+              isSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}
           >
             {message}
           </div>
         )}
+
       </form>
     </div>
   );
