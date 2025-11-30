@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'; // Add this at the top if not alrea
 import { authFetch } from '../utils/auth_fetch'
 import { useCurrency } from '../context/CurrencyContext';
 
+
 import {
   BarChart,
   Bar,
@@ -14,7 +15,20 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from 'recharts';
-
+const monthOptions = [
+  { value: "01", label: "January" },
+  { value: "02", label: "February" },
+  { value: "03", label: "March" },
+  { value: "04", label: "April" },
+  { value: "05", label: "May" },
+  { value: "06", label: "June" },
+  { value: "07", label: "July" },
+  { value: "08", label: "August" },
+  { value: "09", label: "September" },
+  { value: "10", label: "October" },
+  { value: "11", label: "November" },
+  { value: "12", label: "December" },
+];
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const formatCurrency = (amount: number, currency: string): string => {
@@ -61,6 +75,8 @@ interface AnalyticsResponse {
   const [rawAnalytics, setRawAnalytics] = useState<AnalyticsResponse | null>(null);
   const [viewMode, setViewMode] = useState('monthly');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedYearlyMonth, setSelectedYearlyMonth] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [categoryColors, setCategoryColors] = useState(() => {
@@ -154,71 +170,77 @@ const fetchAnalytics = async (includeAll = false) => {
   const currentYear = new Date().getFullYear().toString();
 
   const computeYearlySummary = () => {
-    if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
-    let totalInc = 0;
-    let totalExp = 0;
-    Object.entries(rawAnalytics.summary).forEach(([period, vals]) => {
-      if (period.startsWith(currentYear + '-')) {
+      if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
+
+      const y = String(selectedYear);
+      let totalInc = 0;
+      let totalExp = 0;
+
+      Object.entries(rawAnalytics.summary).forEach(([period, vals]) => {
+        if (!period.startsWith(y + "-")) return;
+
+        // If month selected, filter
+        if (selectedYearlyMonth !== "all" && !period.endsWith(selectedYearlyMonth)) {
+          return;
+        }
+
         totalInc += vals.income || 0;
         totalExp += vals.expense || 0;
-      }
-    });
-    return { income: totalInc, expense: totalExp };
-  };
+      });
+
+      return { income: totalInc, expense: totalExp };
+    };
 
   const buildYearlyChartData = () => {
-  if (!rawAnalytics?.summary || !rawAnalytics?.categoryBreakdown) return [];
+      if (!rawAnalytics?.summary || !rawAnalytics?.categoryBreakdown) return [];
 
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const arr = [];
+      const y = String(selectedYear);
+      const arr = [];
 
       for (let m = 1; m <= 12; m++) {
-        const mm = String(m).padStart(2, '0');
-        const key = `${currentYear}-${mm}`;
+        const mm = String(m).padStart(2, "0");
 
-        type MonthData = {
-          monthLabel: string;
-          [category: string]: number | string;
+        if (selectedYearlyMonth !== "all" && selectedYearlyMonth !== mm) continue;
+
+        const key = `${y}-${mm}`;
+        const monthData: any = {
+          monthLabel: monthOptions[m - 1].label,
         };
 
-        const monthData: MonthData = { monthLabel: monthNames[m - 1] };
-
-        // categoryBreakdown is assumed to be { expense: { categoryName: amount, ... } }
         const breakdown = rawAnalytics.categoryBreakdown[key]?.expense || {};
-
-        // Copy all categories with their expense into monthData
-        for (const [category, amount] of Object.entries(breakdown)) {
-          monthData[category] = amount;
-        }
+        Object.entries(breakdown).forEach(([cat, amount]) => {
+          monthData[cat] = amount;
+        });
 
         arr.push(monthData);
       }
+
       return arr;
     };
 
   const buildYearlyExpenseList = () => {
-    if (!rawAnalytics?.details) return [];
+      if (!rawAnalytics?.details) return [];
 
-    interface Transaction {
-          id: number;
-          type: 'income' | 'expense';
-          category: string;
-          amount: number;
-          description: string | null;
-          date: string; // formatted as 'YYYY-MM-DD'
+      const y = String(selectedYear);
+      let list: any[] = [];
+
+      Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
+        if (!periodKey.startsWith(y + "-")) return;
+
+        if (selectedYearlyMonth !== "all" && !periodKey.endsWith(selectedYearlyMonth)) {
+          return;
         }
-    let allTx: Transaction[] = [];
-    Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
-      if (periodKey.startsWith(currentYear + '-')) {
-        allTx = allTx.concat(
-          txArray.filter(
-            (tx) => (categoryFilter === 'all' || tx.category === categoryFilter)
-          )
-        );
-      }
-    });
-    return allTx.sort((a, b) => (a.date < b.date ? 1 : -1));
-  };
+
+        txArray.forEach((tx) => {
+          if (categoryFilter === "all" || tx.category === categoryFilter) {
+            list.push(tx);
+          }
+        });
+      });
+
+      return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+    };
+
 
   const computeMonthlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
@@ -313,19 +335,49 @@ const fetchAnalytics = async (includeAll = false) => {
           </div>
 
           {/* If Monthly, show Month picker */}
-          {!isYearly && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Month
-              </label>
-              <input
-                type="month"
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-              />
-            </div>
-          )}
+          {isYearly && (
+                      <>
+                        {/* YEAR DROPDOWN */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Year
+                          </label>
+                          <select
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(Number(e.target.value))}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500"
+                          >
+                            {Array.from({ length: 6 }).map((_, i) => {
+                              const y = new Date().getFullYear() - i;
+                              return (
+                                <option key={y} value={y}>
+                                  {y}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        {/* MONTH DROPDOWN (OPTIONAL WITH "ALL") */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Month
+                          </label>
+                          <select
+                            value={selectedYearlyMonth}
+                            onChange={(e) => setSelectedYearlyMonth(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500"
+                          >
+                            <option value="all">All months</option>
+                            {monthOptions.map((m) => (
+                              <option key={m.value} value={m.value}>
+                                {m.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
 
           {/* Category Filter */}
           <div>
@@ -358,7 +410,7 @@ const fetchAnalytics = async (includeAll = false) => {
           <div className="bg-white rounded-lg shadow-md p-4 h-full flex flex-col">
             <h3 className="text-lg font-semibold mb-3 text-gray-800">
               {isYearly
-                ? `Latest Expenses (${currentYear})`
+                ? `Latest Expenses (${selectedYear})`
                 : (() => {
                     const [year, month, day] = selectedMonth
                       .split('-')
@@ -435,7 +487,7 @@ const fetchAnalytics = async (includeAll = false) => {
           <div className="flex justify-end">
             <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-1/2 lg:w-4/5">
               <h3 className="text-lg font-medium mb-3 text-gray-800">
-                {isYearly ? `Year ${currentYear} Summary` : 'This Month Summary'}
+                {isYearly ? `Year ${selectedYear} Summary` : 'This Month Summary'}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {/* Income */}
