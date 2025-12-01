@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { authFetch } from '../utils/auth_fetch';
 import { useCurrency } from '../context/CurrencyContext';
-
 import {
   BarChart,
   Bar,
@@ -31,12 +30,10 @@ const monthOptions = [
   { value: '12', label: 'December' },
 ];
 
-const formatCurrency = (amount: number, currency: string): string => {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount || 0);
-};
+const formatCurrency = (amount: number, currency: string): string =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(
+    amount || 0
+  );
 
 const getCurrentYearMonth = () => {
   const d = new Date();
@@ -73,14 +70,18 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const [rawAnalytics, setRawAnalytics] = useState<AnalyticsResponse | null>(
     null
   );
-  const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
+  const [viewMode, setViewMode] = useState<
+    'monthly' | 'yearly' | 'monthAcrossYears'
+  >('monthly');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
 
-  // NEW: available years from backend
   const [availableYears, setAvailableYears] = useState<number[]>([]);
-
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedYearlyMonth, setSelectedYearlyMonth] = useState<'all' | string>('all');
+  const [selectedYear, setSelectedYear] = useState<number>(
+    new Date().getFullYear()
+  );
+  const [selectedYearlyMonth, setSelectedYearlyMonth] = useState<'all' | string>(
+    'all'
+  );
 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -99,21 +100,12 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const { currency } = useCurrency();
 
   function getCategoryColor(category: string) {
-    if (categoryColors[category]) {
-      return categoryColors[category];
-    }
-
+    if (categoryColors[category]) return categoryColors[category];
     const hue = Math.floor(Math.random() * 360);
     const backgroundColor = `hsl(${hue}, 100%, 90%)`;
     const color = `hsl(${hue}, 80%, 30%)`;
-
     const newColor = { backgroundColor, color };
-
-    setCategoryColors((prev) => ({
-      ...prev,
-      [category]: newColor,
-    }));
-
+    setCategoryColors((prev) => ({ ...prev, [category]: newColor }));
     return newColor;
   }
 
@@ -123,18 +115,14 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     }
   }, [categoryColors]);
 
-  // Fetch analytics
+  // ---- Analytics fetch (monthly data for all periods) ----
   const fetchAnalytics = async (includeAll = false) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        period: 'monthly',
-      });
-
+      const params = new URLSearchParams({ period: 'monthly' });
       if (!includeAll && categoryFilter !== 'all') {
         params.append('categories', categoryFilter);
       }
-
       const res = await authFetch(
         `${API_BASE_URL}/api/analytics?${params.toString()}`
       );
@@ -161,6 +149,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     fetchAnalytics(true);
   }, []);
 
+  // ---- Categories ----
   useEffect(() => {
     const fetchCategories = async () => {
       const res = await authFetch(`${API_BASE_URL}/api/categories/expense`);
@@ -174,100 +163,170 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     fetchCategories();
   }, []);
 
-  // NEW — Load available years from backend
+  // ---- Load years from /years endpoint (if available) ----
   useEffect(() => {
-    const loadYears = async () => {
+    const loadYearsFromApi = async () => {
       try {
         const r = await authFetch(`${API_BASE_URL}/api/analytics/years`);
-        if (r.ok) {
-          const d = await r.json();
-          setAvailableYears(d.years);
-
-          if (d.years.length && !d.years.includes(selectedYear)) {
-            setSelectedYear(d.years[d.years.length - 1]);
-          }
+        if (!r.ok) return;
+        const d = await r.json();
+        let yearsRaw = d.years ?? d;
+        if (!Array.isArray(yearsRaw)) return;
+        const years = yearsRaw
+          .map((y: any) => parseInt(String(y), 10))
+          .filter((y) => !Number.isNaN(y))
+          .sort((a, b) => a - b);
+        if (years.length) {
+          setAvailableYears(years);
         }
-      } catch {
-        console.error("Failed to load years list");
+      } catch (err) {
+        console.error('Failed to load years from /years endpoint', err);
       }
     };
-    loadYears();
+    loadYearsFromApi();
   }, []);
 
-  // — YEARLY helpers —
+  // ---- Fallback: derive years from summary keys if API empty ----
+  useEffect(() => {
+    if (!rawAnalytics?.summary) return;
+    if (availableYears.length) return;
+    const years = Array.from(
+      new Set(
+        Object.keys(rawAnalytics.summary)
+          .map((key) => parseInt(key.split('-')[0], 10))
+          .filter((y) => !Number.isNaN(y))
+      )
+    ).sort((a, b) => a - b);
+    if (years.length) {
+      setAvailableYears(years);
+    }
+  }, [rawAnalytics, availableYears.length]);
+
+  // ---- Ensure selectedYear is one of the available years ----
+  useEffect(() => {
+    if (!availableYears.length) return;
+    if (!availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[availableYears.length - 1]);
+    }
+  }, [availableYears, selectedYear]);
+
+  // ---- When entering "monthAcrossYears", make sure month is not 'all' ----
+  useEffect(() => {
+    if (viewMode === 'monthAcrossYears' && selectedYearlyMonth === 'all') {
+      const currentMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+      setSelectedYearlyMonth(currentMonth);
+    }
+  }, [viewMode, selectedYearlyMonth]);
+
+  const isYearly = viewMode === 'yearly';
+  const isMonthAcrossYears = viewMode === 'monthAcrossYears';
+
+  // ---- YEARLY (one year, up to 12 months) ----
   const computeYearlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
-
     const y = String(selectedYear);
     let totalInc = 0;
     let totalExp = 0;
-
     Object.entries(rawAnalytics.summary).forEach(([period, vals]) => {
       if (!period.startsWith(`${y}-`)) return;
-
-      if (selectedYearlyMonth !== 'all' && !period.endsWith(selectedYearlyMonth))
+      const [, monthStr] = period.split('-');
+      if (
+        selectedYearlyMonth !== 'all' &&
+        monthStr !== selectedYearlyMonth
+      )
         return;
-
       totalInc += vals.income || 0;
       totalExp += vals.expense || 0;
     });
-
     return { income: totalInc, expense: totalExp };
   };
 
   const buildYearlyChartData = () => {
-    if (!rawAnalytics?.summary || !rawAnalytics?.categoryBreakdown) return [];
-
+    if (!rawAnalytics?.categoryBreakdown) return [];
     const y = String(selectedYear);
     const arr: any[] = [];
-
     for (let m = 1; m <= 12; m++) {
       const mm = String(m).padStart(2, '0');
-
       if (selectedYearlyMonth !== 'all' && selectedYearlyMonth !== mm) continue;
-
       const key = `${y}-${mm}`;
       const monthData: any = {
         monthLabel: monthOptions[m - 1].label,
       };
-
       const breakdown = rawAnalytics.categoryBreakdown[key]?.expense || {};
       Object.entries(breakdown).forEach(([cat, amount]) => {
         monthData[cat] = amount;
       });
-
       arr.push(monthData);
     }
-
     return arr;
   };
 
   const buildYearlyExpenseList = () => {
     if (!rawAnalytics?.details) return [];
-
     const y = String(selectedYear);
     let list: any[] = [];
-
     Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
       if (!periodKey.startsWith(`${y}-`)) return;
-
+      const [, monthStr] = periodKey.split('-');
       if (
         selectedYearlyMonth !== 'all' &&
-        !periodKey.endsWith(selectedYearlyMonth)
+        monthStr !== selectedYearlyMonth
       )
         return;
-
       txArray.forEach((tx) => {
         if (categoryFilter === 'all' || tx.category === categoryFilter) {
           list.push(tx);
         }
       });
     });
-
     return list.sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
-  // — MONTHLY helpers —
+  // ---- MONTH ACROSS YEARS (same month, all years) ----
+  const computeMonthAcrossYearsSummary = () => {
+    if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
+    let totalInc = 0;
+    let totalExp = 0;
+    Object.entries(rawAnalytics.summary).forEach(([period, vals]) => {
+      const [, monthStr] = period.split('-');
+      if (monthStr !== selectedYearlyMonth) return;
+      totalInc += vals.income || 0;
+      totalExp += vals.expense || 0;
+    });
+    return { income: totalInc, expense: totalExp };
+  };
+
+  const buildMonthAcrossYearsChartData = () => {
+    if (!rawAnalytics?.categoryBreakdown) return [];
+    const arr: any[] = [];
+    availableYears.forEach((year) => {
+      const key = `${year}-${selectedYearlyMonth}`;
+      const row: any = { yearLabel: String(year) };
+      const breakdown = rawAnalytics.categoryBreakdown[key]?.expense || {};
+      Object.entries(breakdown).forEach(([cat, amount]) => {
+        row[cat] = amount;
+      });
+      arr.push(row);
+    });
+    return arr;
+  };
+
+  const buildMonthAcrossYearsExpenseList = () => {
+    if (!rawAnalytics?.details) return [];
+    let list: any[] = [];
+    Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
+      const [, monthStr] = periodKey.split('-');
+      if (monthStr !== selectedYearlyMonth) return;
+      txArray.forEach((tx) => {
+        if (categoryFilter === 'all' || tx.category === categoryFilter) {
+          list.push(tx);
+        }
+      });
+    });
+    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  };
+
+  // ---- MONTHLY (single month) ----
   const computeMonthlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
     const vals = rawAnalytics.summary[selectedMonth] || {
@@ -306,6 +365,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
+  // ---- loading / empty ----
   if (loading)
     return <div className="bg-white p-6 text-center">Loading…</div>;
   if (!rawAnalytics)
@@ -313,33 +373,38 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       <div className="bg-white p-6 text-center">No data available.</div>
     );
 
-  const isYearly = viewMode === 'yearly';
-  const { income, expense } = isYearly
-    ? computeYearlySummary()
-    : computeMonthlySummary();
-  const net = income - expense;
-  const chartData = isYearly
-    ? buildYearlyChartData()
-    : buildMonthlyChartData();
-  const expenseList = isYearly
-    ? buildYearlyExpenseList()
-    : buildMonthlyExpenseList();
+  // ---- pick correct summary / chart / list based on view ----
+  let income = 0;
+  let expense = 0;
+  let chartData: any[] = [];
+  let expenseList: any[] = [];
 
-  const handleEdit = (tx: any) => {
-    onEdit(tx);
-  };
+  if (isYearly) {
+    ({ income, expense } = computeYearlySummary());
+    chartData = buildYearlyChartData();
+    expenseList = buildYearlyExpenseList();
+  } else if (isMonthAcrossYears) {
+    ({ income, expense } = computeMonthAcrossYearsSummary());
+    chartData = buildMonthAcrossYearsChartData();
+    expenseList = buildMonthAcrossYearsExpenseList();
+  } else {
+    ({ income, expense } = computeMonthlySummary());
+    chartData = buildMonthlyChartData();
+    expenseList = buildMonthlyExpenseList();
+  }
+
+  const net = income - expense;
+
+  const handleEdit = (tx: any) => onEdit(tx);
 
   const handleDelete = async (id: any) => {
     if (!window.confirm('Are you sure you want to delete this transaction?'))
       return;
-
     try {
       const res = await authFetch(`${API_BASE_URL}/api/transactions/${id}`, {
         method: 'DELETE',
       });
-
       if (!res.ok) throw new Error('Failed to delete');
-
       fetchAnalytics();
     } catch (err) {
       console.error('Delete error:', err);
@@ -347,14 +412,29 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     }
   };
 
+  const currentMonthLabel = (() => {
+    const [year, month] = selectedMonth
+      .split('-')
+      .map((s, i) => (i === 1 ? parseInt(s) - 1 : parseInt(s, 10)));
+    return new Date(year, month, 1).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+    });
+  })();
+
+  const selectedMonthLabel =
+    monthOptions.find((m) => m.value === selectedYearlyMonth)?.label ?? '';
+
   return (
     <div className="space-y-6 px-4 md:px-6">
+      {/* Header + filters */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-semibold mb-4 text-gray-800">
           Financial Analytics
         </h2>
 
         <div className="flex flex-wrap gap-6 items-end">
+          {/* View mode */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               View
@@ -362,16 +442,25 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             <select
               value={viewMode}
               onChange={(e) =>
-                setViewMode(e.target.value as 'monthly' | 'yearly')
+                setViewMode(
+                  e.target.value as
+                    | 'monthly'
+                    | 'yearly'
+                    | 'monthAcrossYears'
+                )
               }
               className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
+              <option value="yearly">Yearly (12 months)</option>
+              <option value="monthAcrossYears">
+                Same month across years
+              </option>
             </select>
           </div>
 
-          {!isYearly && (
+          {/* Month picker (monthly view) */}
+          {!isYearly && !isMonthAcrossYears && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Month
@@ -385,9 +474,9 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </div>
           )}
 
+          {/* Yearly: year + month filter */}
           {isYearly && (
             <>
-              {/* YEAR SELECTOR — NOW FILTERED BY AVAILABLE YEARS */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Year
@@ -407,7 +496,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Month
+                  Month (optional)
                 </label>
                 <select
                   value={selectedYearlyMonth}
@@ -427,6 +516,29 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </>
           )}
 
+          {/* Month across years: only month selector */}
+          {isMonthAcrossYears && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Month
+              </label>
+              <select
+                value={selectedYearlyMonth}
+                onChange={(e) =>
+                  setSelectedYearlyMonth(e.target.value as string)
+                }
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500"
+              >
+                {monthOptions.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Category filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Categories
@@ -446,37 +558,22 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           </div>
         </div>
       </div>
-      {/* ─── MAIN GRID: Chart + Summary + List ───────────────────────────── */}
+
+      {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── LEFT COLUMN (List of Expenses) ─────────────────────────── */}
+        {/* LEFT – list of expenses */}
         <div className="lg:col-span-1 order-2 lg:order-1">
           <div className="bg-white rounded-lg shadow-md p-4 h-full flex flex-col">
             <h3 className="text-lg font-semibold mb-3 text-gray-800">
               {isYearly
                 ? `Latest Expenses (${selectedYear}${
                     selectedYearlyMonth !== 'all'
-                      ? ` - ${
-                          monthOptions.find(
-                            (m) => m.value === selectedYearlyMonth
-                          )?.label ?? ''
-                        }`
+                      ? ` - ${selectedMonthLabel}`
                       : ''
                   })`
-                : (() => {
-                    const [year, month] = selectedMonth
-                      .split('-')
-                      .map((s, i) =>
-                        i === 1 ? parseInt(s) - 1 : parseInt(s, 10)
-                      );
-                    return `Expenses in ${new Date(
-                      year,
-                      month,
-                      1
-                    ).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                    })}`;
-                  })()}
+                : isMonthAcrossYears
+                ? `Latest Expenses (${selectedMonthLabel} – all years)`
+                : `Expenses in ${currentMonthLabel}`}
             </h3>
             <div className="overflow-y-auto flex-1">
               {expenseList.length === 0 && (
@@ -511,7 +608,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                       {formatCurrency(tx.amount, currency)}
                     </span>
                   </div>
-
                   <div className="flex justify-between items-center text-xs text-gray-500 mt-0.5">
                     <span>
                       {new Date(tx.date).toLocaleDateString('en-US', {
@@ -522,8 +618,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     </span>
                     <span className="italic">{tx.description}</span>
                   </div>
-
-                  {/* Buttons Row */}
                   <div className="mt-2 flex gap-2 text-xs">
                     <button
                       onClick={() => handleEdit(tx)}
@@ -544,26 +638,23 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           </div>
         </div>
 
-        {/* ── MIDDLE (Bar Chart) and RIGHT (Summary Box) ─────────────── */}
+        {/* RIGHT – Summary + chart */}
         <div className="lg:col-span-2 flex flex-col gap-6 order-1 lg:order-2">
-          {/* SUMMARY BOX */}
+          {/* Summary */}
           <div className="flex justify-end">
             <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-1/2 lg:w-4/5">
               <h3 className="text-lg font-medium mb-3 text-gray-800">
                 {isYearly
                   ? `Year ${selectedYear}${
                       selectedYearlyMonth !== 'all'
-                        ? ` - ${
-                            monthOptions.find(
-                              (m) => m.value === selectedYearlyMonth
-                            )?.label ?? ''
-                          }`
+                        ? ` - ${selectedMonthLabel}`
                         : ''
                     } Summary`
+                  : isMonthAcrossYears
+                  ? `${selectedMonthLabel} – all years summary`
                   : 'This Month Summary'}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {/* Income */}
                 <div className="bg-green-50 p-3 rounded-lg">
                   <div className="text-sm text-green-600 font-medium">
                     Income
@@ -572,7 +663,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     {formatCurrency(income, currency)}
                   </div>
                 </div>
-                {/* Expenses */}
                 <div className="bg-red-50 p-3 rounded-lg">
                   <div className="text-sm text-red-600 font-medium">
                     Expenses
@@ -581,7 +671,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     {formatCurrency(expense, currency)}
                   </div>
                 </div>
-                {/* Net */}
                 <div
                   className={`p-3 rounded-lg ${
                     net >= 0 ? 'bg-blue-50' : 'bg-orange-50'
@@ -606,25 +695,14 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </div>
           </div>
 
-          {/* BAR CHART */}
+          {/* Chart */}
           <div className="bg-white rounded-lg shadow-md p-4 flex-1">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">
               {isYearly
-                ? 'Expenses Per Month'
-                : `Expenses by Category (${(() => {
-                    const [year, month] = selectedMonth
-                      .split('-')
-                      .map((s, i) =>
-                        i === 1 ? parseInt(s) - 1 : parseInt(s, 10)
-                      );
-                    return new Date(year, month, 1).toLocaleDateString(
-                      'en-US',
-                      {
-                        year: 'numeric',
-                        month: 'long',
-                      }
-                    );
-                  })()})`}
+                ? 'Expenses per month'
+                : isMonthAcrossYears
+                ? `Expenses in ${selectedMonthLabel} (all years)`
+                : `Expenses by Category (${currentMonthLabel})`}
             </h3>
 
             {chartData.length === 0 ? (
@@ -636,10 +714,18 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
-                    dataKey={isYearly ? 'monthLabel' : 'category'}
-                    angle={isYearly ? 0 : -30}
-                    textAnchor={isYearly ? 'middle' : 'end'}
-                    height={isYearly ? undefined : 70}
+                    dataKey={
+                      isYearly
+                        ? 'monthLabel'
+                        : isMonthAcrossYears
+                        ? 'yearLabel'
+                        : 'category'
+                    }
+                    angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
+                    textAnchor={
+                      !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
+                    }
+                    height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
                   />
                   <YAxis />
                   <Tooltip
@@ -647,8 +733,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                       formatCurrency(Number(value ?? 0), currency)
                     }
                   />
-
-                  {isYearly ? (
+                  {isYearly || isMonthAcrossYears ? (
                     expenseCategories?.map((category) => {
                       const color = getCategoryColor(category);
                       return (
