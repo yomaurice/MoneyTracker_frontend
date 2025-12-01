@@ -76,11 +76,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
 
-  // NEW: year + month for YEARLY mode
+  // NEW: available years from backend
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedYearlyMonth, setSelectedYearlyMonth] = useState<'all' | string>(
-    'all'
-  );
+  const [selectedYearlyMonth, setSelectedYearlyMonth] = useState<'all' | string>('all');
 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
@@ -103,7 +103,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       return categoryColors[category];
     }
 
-    // Generate a random pastel color
     const hue = Math.floor(Math.random() * 360);
     const backgroundColor = `hsl(${hue}, 100%, 90%)`;
     const color = `hsl(${hue}, 80%, 30%)`;
@@ -132,7 +131,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
         period: 'monthly',
       });
 
-      // Only apply category filter if not doing "all"
       if (!includeAll && categoryFilter !== 'all') {
         params.append('categories', categoryFilter);
       }
@@ -155,17 +153,14 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     }
   };
 
-  // Refetch when category filter changes
   useEffect(() => {
     fetchAnalytics();
   }, [categoryFilter]);
 
-  // Initial fetch: full data for categories
   useEffect(() => {
     fetchAnalytics(true);
   }, []);
 
-  // Fetch expense categories
   useEffect(() => {
     const fetchCategories = async () => {
       const res = await authFetch(`${API_BASE_URL}/api/categories/expense`);
@@ -179,9 +174,27 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     fetchCategories();
   }, []);
 
-  // ─────────────────────────────────────────────
-  // YEARLY helpers (filtered by selectedYear + selectedYearlyMonth)
-  // ─────────────────────────────────────────────
+  // NEW — Load available years from backend
+  useEffect(() => {
+    const loadYears = async () => {
+      try {
+        const r = await authFetch(`${API_BASE_URL}/api/analytics/years`);
+        if (r.ok) {
+          const d = await r.json();
+          setAvailableYears(d.years);
+
+          if (d.years.length && !d.years.includes(selectedYear)) {
+            setSelectedYear(d.years[d.years.length - 1]);
+          }
+        }
+      } catch {
+        console.error("Failed to load years list");
+      }
+    };
+    loadYears();
+  }, []);
+
+  // — YEARLY helpers —
   const computeYearlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
 
@@ -223,7 +236,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
         monthData[cat] = amount;
       });
 
-      // If there is at least one expense, or you want to show empty months too:
       arr.push(monthData);
     }
 
@@ -255,9 +267,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return list.sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
-  // ─────────────────────────────────────────────
-  // MONTHLY helpers (selectedMonth = "YYYY-MM")
-  // ─────────────────────────────────────────────
+  // — MONTHLY helpers —
   const computeMonthlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
     const vals = rawAnalytics.summary[selectedMonth] || {
@@ -296,9 +306,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
-  // ─────────────────────────────────────────────
-  // Early loading / error states
-  // ─────────────────────────────────────────────
   if (loading)
     return <div className="bg-white p-6 text-center">Loading…</div>;
   if (!rawAnalytics)
@@ -333,7 +340,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
       if (!res.ok) throw new Error('Failed to delete');
 
-      // Refetch data (respecting current filters)
       fetchAnalytics();
     } catch (err) {
       console.error('Delete error:', err);
@@ -343,14 +349,12 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
   return (
     <div className="space-y-6 px-4 md:px-6">
-      {/* ─── HEADER & FILTERS ─────────────────────────────────────────── */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-2xl font-semibold mb-4 text-gray-800">
           Financial Analytics
         </h2>
 
         <div className="flex flex-wrap gap-6 items-end">
-          {/* View Mode */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               View
@@ -367,7 +371,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </select>
           </div>
 
-          {/* Month picker when Monthly */}
           {!isYearly && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -382,10 +385,9 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </div>
           )}
 
-          {/* Year & Month dropdowns when Yearly */}
           {isYearly && (
             <>
-              {/* YEAR DROPDOWN */}
+              {/* YEAR SELECTOR — NOW FILTERED BY AVAILABLE YEARS */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Year
@@ -395,18 +397,14 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500"
                 >
-                  {Array.from({ length: 6 }).map((_, i) => {
-                    const y = new Date().getFullYear() - i;
-                    return (
-                      <option key={y} value={y}>
-                        {y}
-                      </option>
-                    );
-                  })}
+                  {availableYears.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* MONTH DROPDOWN (OPTIONAL WITH "ALL") */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Month
@@ -429,7 +427,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </>
           )}
 
-          {/* Category Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Categories
@@ -449,7 +446,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           </div>
         </div>
       </div>
-
       {/* ─── MAIN GRID: Chart + Summary + List ───────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── LEFT COLUMN (List of Expenses) ─────────────────────────── */}
