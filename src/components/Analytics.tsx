@@ -761,7 +761,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
         <div className="lg:col-span-2 flex flex-col gap-6 order-1 lg:order-2">
           {/* Summary */}
           <div className="flex justify-end">
-            <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-3/4 lg:w-5/6">
+            <div className="bg-white rounded-lg shadow-md p-4 w-full max-w-full lg:w-full xl:w-11/12 mx-auto">
               <h3 className="text-lg font-medium text-gray-800">
                 {summaryTitle}
               </h3>
@@ -773,7 +773,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-green-600 font-medium">
                     Income
                   </div>
-                  <div className="text-xl md:text-2xl font-bold text-green-700 leading-tight whitespace-nowrap">
+                  <div className="text-xl md:text-2xl font-bold text-green-700 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
                     {formatCurrency(income, currency)}
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-red-600 font-medium">
                     Expenses
                   </div>
-                  <div className="text-xl md:text-2xl font-bold text-red-700 leading-tight whitespace-nowrap">
+                  <div className="text-xl md:text-2xl font-bold text-red-700 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
                     {formatCurrency(expense, currency)}
                   </div>
                 </div>
@@ -798,7 +798,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     Net
                   </div>
                   <div
-                    className={`text-xl md:text-2xl font-bold leading-tight break-nowrap ${
+                    className={`text-xl md:text-2xl font-bold leading-tight break-nowrap overflow-hidden text-ellipsis ${
                       net >= 0 ? 'text-blue-700' : 'text-orange-700'
                     }`}
                   >
@@ -823,7 +823,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={expenseChartData}>
+                  <BarChart data={expenseChartData} margin={{ top: 30, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey={
@@ -852,6 +852,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                               y={avgExpense}
                               stroke="#4b5563"
                               strokeDasharray="4 4"
+                              ifOverflow="extendDomain"
                               label={{
                                 value: avgExpenseLabel,
                                 position: 'insideTopRight',
@@ -915,7 +916,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={incomeChartData}>
+                  <BarChart data={incomeChartData} margin={{ top: 30, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis
                       dataKey={
@@ -944,6 +945,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         y={avgIncome}
                         stroke="#4b5563"
                         strokeDasharray="4 4"
+                        ifOverflow="extendDomain"
                         label={{
                           value: avgIncomeLabel,
                           position: 'top',
