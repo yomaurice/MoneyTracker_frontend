@@ -773,7 +773,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-green-600 font-medium">
                     Income
                   </div>
-                  <div className="text-xl md:text-2xl font-bold text-green-700 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                  <div className="text-base sm:text-lg md:text-xl font-bold text-green-700 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
                     {formatCurrency(income, currency)}
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-red-600 font-medium">
                     Expenses
                   </div>
-                  <div className="text-xl md:text-2xl font-bold text-red-700 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                  <div className="text-base sm:text-lg md:text-xl font-bold text-red-700 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
                     {formatCurrency(expense, currency)}
                   </div>
                 </div>
@@ -798,7 +798,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     Net
                   </div>
                   <div
-                    className={`text-xl md:text-2xl font-bold leading-tight break-nowrap overflow-hidden text-ellipsis ${
+                    className={`text-base sm:text-lg md:text-xl font-bold leading-tight break-nowrap overflow-hidden text-ellipsis ${
                       net >= 0 ? 'text-blue-700' : 'text-orange-700'
                     }`}
                   >
@@ -822,6 +822,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   No data to draw expenses chart.
                 </div>
               ) : (
+                  {avgExpense > 0 && (
+                  <div className="text-right text-sm font-semibold text-gray-600 mb-1">
+                    Avg: {formatCurrency(avgExpense, currency)}
+                  </div>
+                )}
                 <ResponsiveContainer width="100%" height={280}>
                   <BarChart data={expenseChartData} margin={{ top: 30, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -853,14 +858,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                               stroke="#4b5563"
                               strokeDasharray="4 4"
                               ifOverflow="extendDomain"
-                              label={{
-                                value: avgExpenseLabel,
-                                position: 'insideTopRight',
-                                offset: 10,                // FIX: forces label above bars
-                                fill: '#4b5563',
-                                fontSize: 12,
-                                fontWeight: 'bold',
-                              }}
                             />
                     )}
                     {isYearly || isMonthAcrossYears ? (
@@ -915,6 +912,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   No data to draw income chart.
                 </div>
               ) : (
+                    {avgIncome > 0 && (
+                  <div className="text-right text-sm font-semibold text-gray-600 mb-1">
+                    Avg: {formatCurrency(avgIncome, currency)}
+                  </div>
+                )}
                 <ResponsiveContainer width="100%" height={260}>
                   <BarChart data={incomeChartData} margin={{ top: 30, right: 30, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -945,14 +947,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         y={avgIncome}
                         stroke="#4b5563"
                         strokeDasharray="4 4"
-                        ifOverflow="extendDomain"
-                        label={{
-                          value: avgIncomeLabel,
-                          position: 'top',
-                          offset: 10,
-                          fill: '#4b5563',
-                          fontSize: 11,
-                        }}
                       />
                     )}
                     {isYearly || isMonthAcrossYears ? (
