@@ -11,6 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
   ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -221,6 +222,29 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const isYearly = viewMode === 'yearly';
   const isMonthAcrossYears = viewMode === 'monthAcrossYears';
 
+  // Helper: compute average value for a chart
+  const computeAverageValue = (data: any[], valueKeys: string[]): number => {
+    if (!data.length || !valueKeys.length) return 0;
+    let total = 0;
+    let count = 0;
+
+    data.forEach((row) => {
+      let rowSum = 0;
+      valueKeys.forEach((k) => {
+        if (typeof row[k] === 'number') {
+          rowSum += row[k];
+        }
+      });
+      // Only count rows that actually have some value
+      if (rowSum > 0) {
+        total += rowSum;
+        count += 1;
+      }
+    });
+
+    return count ? total / count : 0;
+  };
+
   // ---- YEARLY (one year, up to 12 months) ----
   const computeYearlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
@@ -241,7 +265,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return { income: totalInc, expense: totalExp };
   };
 
-  const buildYearlyChartData = () => {
+  const buildYearlyExpenseChartData = () => {
     if (!rawAnalytics?.categoryBreakdown) return [];
     const y = String(selectedYear);
     const arr: any[] = [];
@@ -261,6 +285,23 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return arr;
   };
 
+  const buildYearlyIncomeChartData = () => {
+    if (!rawAnalytics?.summary) return [];
+    const y = String(selectedYear);
+    const arr: any[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const mm = String(m).padStart(2, '0');
+      if (selectedYearlyMonth !== 'all' && selectedYearlyMonth !== mm) continue;
+      const key = `${y}-${mm}`;
+      const vals = rawAnalytics.summary[key] || { income: 0, expense: 0 };
+      arr.push({
+        monthLabel: monthOptions[m - 1].label,
+        income: vals.income || 0,
+      });
+    }
+    return arr;
+  };
+
   const buildYearlyExpenseList = () => {
     if (!rawAnalytics?.details) return [];
     const y = String(selectedYear);
@@ -274,8 +315,10 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       )
         return;
       txArray.forEach((tx) => {
-        if (categoryFilter === 'all' || tx.category === categoryFilter) {
-          list.push(tx);
+        if (tx.type === 'expense') {
+          if (categoryFilter === 'all' || tx.category === categoryFilter) {
+            list.push(tx);
+          }
         }
       });
     });
@@ -296,7 +339,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return { income: totalInc, expense: totalExp };
   };
 
-  const buildMonthAcrossYearsChartData = () => {
+  const buildMonthAcrossYearsExpenseChartData = () => {
     if (!rawAnalytics?.categoryBreakdown) return [];
     const arr: any[] = [];
     availableYears.forEach((year) => {
@@ -311,6 +354,20 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return arr;
   };
 
+  const buildMonthAcrossYearsIncomeChartData = () => {
+    if (!rawAnalytics?.summary) return [];
+    const arr: any[] = [];
+    availableYears.forEach((year) => {
+      const key = `${year}-${selectedYearlyMonth}`;
+      const vals = rawAnalytics.summary[key] || { income: 0, expense: 0 };
+      arr.push({
+        yearLabel: String(year),
+        income: vals.income || 0,
+      });
+    });
+    return arr;
+  };
+
   const buildMonthAcrossYearsExpenseList = () => {
     if (!rawAnalytics?.details) return [];
     let list: any[] = [];
@@ -318,8 +375,10 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       const [, monthStr] = periodKey.split('-');
       if (monthStr !== selectedYearlyMonth) return;
       txArray.forEach((tx) => {
-        if (categoryFilter === 'all' || tx.category === categoryFilter) {
-          list.push(tx);
+        if (tx.type === 'expense') {
+          if (categoryFilter === 'all' || tx.category === categoryFilter) {
+            list.push(tx);
+          }
         }
       });
     });
@@ -336,7 +395,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return { income: vals.income || 0, expense: vals.expense || 0 };
   };
 
-  const buildMonthlyChartData = () => {
+  const buildMonthlyExpenseChartData = () => {
     if (!rawAnalytics?.categoryBreakdown) return [];
     const expObj =
       rawAnalytics.categoryBreakdown[selectedMonth]?.expense || {};
@@ -355,12 +414,24 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     }
   };
 
+  const buildMonthlyIncomeChartData = () => {
+    if (!rawAnalytics?.categoryBreakdown) return [];
+    const incObj =
+      rawAnalytics.categoryBreakdown[selectedMonth]?.income || {};
+    return Object.entries(incObj).map(([cat, amt]) => ({
+      category: cat,
+      income: amt,
+    }));
+  };
+
   const buildMonthlyExpenseList = () => {
     if (!rawAnalytics?.details) return [];
     const arr = rawAnalytics.details[selectedMonth] || [];
     return arr
       .filter(
-        (tx) => categoryFilter === 'all' || tx.category === categoryFilter
+        (tx) =>
+          tx.type === 'expense' &&
+          (categoryFilter === 'all' || tx.category === categoryFilter)
       )
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   };
@@ -376,22 +447,34 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   // ---- pick correct summary / chart / list based on view ----
   let income = 0;
   let expense = 0;
-  let chartData: any[] = [];
+  let expenseChartData: any[] = [];
+  let incomeChartData: any[] = [];
   let expenseList: any[] = [];
 
   if (isYearly) {
     ({ income, expense } = computeYearlySummary());
-    chartData = buildYearlyChartData();
+    expenseChartData = buildYearlyExpenseChartData();
+    incomeChartData = buildYearlyIncomeChartData();
     expenseList = buildYearlyExpenseList();
   } else if (isMonthAcrossYears) {
     ({ income, expense } = computeMonthAcrossYearsSummary());
-    chartData = buildMonthAcrossYearsChartData();
+    expenseChartData = buildMonthAcrossYearsExpenseChartData();
+    incomeChartData = buildMonthAcrossYearsIncomeChartData();
     expenseList = buildMonthAcrossYearsExpenseList();
   } else {
     ({ income, expense } = computeMonthlySummary());
-    chartData = buildMonthlyChartData();
+    expenseChartData = buildMonthlyExpenseChartData();
+    incomeChartData = buildMonthlyIncomeChartData();
     expenseList = buildMonthlyExpenseList();
   }
+
+  // Averages for charts
+  const expenseValueKeys =
+    isYearly || isMonthAcrossYears ? expenseCategories : ['expense'];
+  const incomeValueKeys = ['income'];
+
+  const avgExpense = computeAverageValue(expenseChartData, expenseValueKeys);
+  const avgIncome = computeAverageValue(incomeChartData, incomeValueKeys);
 
   const net = income - expense;
 
@@ -413,10 +496,10 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   };
 
   const currentMonthLabel = (() => {
-    const [year, month] = selectedMonth
+    const [year, monthIndex] = selectedMonth
       .split('-')
-      .map((s, i) => (i === 1 ? parseInt(s) - 1 : parseInt(s, 10)));
-    return new Date(year, month, 1).toLocaleDateString('en-US', {
+      .map((s, i) => (i === 1 ? parseInt(s, 10) - 1 : parseInt(s, 10)));
+    return new Date(year, monthIndex, 1).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
     });
@@ -424,6 +507,42 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
   const selectedMonthLabel =
     monthOptions.find((m) => m.value === selectedYearlyMonth)?.label ?? '';
+
+  // Summary titles
+  const summaryTitle = isYearly
+    ? `Year ${selectedYear}${
+        selectedYearlyMonth !== 'all'
+          ? ` - ${selectedMonthLabel}`
+          : ''
+      } Summary`
+    : isMonthAcrossYears
+    ? `${selectedMonthLabel} – all years summary`
+    : 'This Month Summary';
+
+  const summarySubtitle = isYearly
+    ? selectedYearlyMonth === 'all'
+      ? 'Total income, expenses and net for all months in the selected year.'
+      : `Totals for ${selectedMonthLabel} ${selectedYear}.`
+    : isMonthAcrossYears
+    ? `Totals for all years in ${selectedMonthLabel}.`
+    : `Totals for ${currentMonthLabel}.`;
+
+  const expenseChartTitle = isYearly
+    ? 'Expenses per month (stacked by category)'
+    : isMonthAcrossYears
+    ? `Expenses in ${selectedMonthLabel} (stacked by category, all years)`
+    : `Expenses by Category (${currentMonthLabel})`;
+
+  const incomeChartTitle = isYearly
+    ? 'Income per month'
+    : isMonthAcrossYears
+    ? `Income in ${selectedMonthLabel} (all years)`
+    : `Income by Category (${currentMonthLabel})`;
+
+  const avgExpenseLabel =
+    avgExpense > 0 ? `Avg: ${formatCurrency(avgExpense, currency)}` : '';
+  const avgIncomeLabel =
+    avgIncome > 0 ? `Avg: ${formatCurrency(avgIncome, currency)}` : '';
 
   return (
     <div className="space-y-6 px-4 md:px-6">
@@ -538,10 +657,10 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </div>
           )}
 
-          {/* Category filter */}
+          {/* Category filter (expenses only) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Categories
+              Categories (expenses)
             </label>
             <select
               value={categoryFilter}
@@ -638,28 +757,23 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           </div>
         </div>
 
-        {/* RIGHT – Summary + chart */}
+        {/* RIGHT – Summary + charts */}
         <div className="lg:col-span-2 flex flex-col gap-6 order-1 lg:order-2">
           {/* Summary */}
           <div className="flex justify-end">
             <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-1/2 lg:w-4/5">
-              <h3 className="text-lg font-medium mb-3 text-gray-800">
-                {isYearly
-                  ? `Year ${selectedYear}${
-                      selectedYearlyMonth !== 'all'
-                        ? ` - ${selectedMonthLabel}`
-                        : ''
-                    } Summary`
-                  : isMonthAcrossYears
-                  ? `${selectedMonthLabel} – all years summary`
-                  : 'This Month Summary'}
+              <h3 className="text-lg font-medium text-gray-800">
+                {summaryTitle}
               </h3>
+              <p className="text-xs text-gray-500 mb-4">
+                {summarySubtitle}
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="bg-green-50 p-3 rounded-lg">
                   <div className="text-sm text-green-600 font-medium">
                     Income
                   </div>
-                  <div className="text-2xl font-bold text-green-700">
+                  <div className="text-xl md:text-2xl font-bold text-green-700 leading-tight break-words">
                     {formatCurrency(income, currency)}
                   </div>
                 </div>
@@ -667,7 +781,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-red-600 font-medium">
                     Expenses
                   </div>
-                  <div className="text-2xl font-bold text-red-700">
+                  <div className="text-xl md:text-2xl font-bold text-red-700 leading-tight break-words">
                     {formatCurrency(expense, currency)}
                   </div>
                 </div>
@@ -684,7 +798,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     Net
                   </div>
                   <div
-                    className={`text-2xl font-bold ${
+                    className={`text-xl md:text-2xl font-bold leading-tight break-words ${
                       net >= 0 ? 'text-blue-700' : 'text-orange-700'
                     }`}
                   >
@@ -695,83 +809,180 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </div>
           </div>
 
-          {/* Chart */}
-          <div className="bg-white rounded-lg shadow-md p-4 flex-1">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">
-              {isYearly
-                ? 'Expenses per month'
-                : isMonthAcrossYears
-                ? `Expenses in ${selectedMonthLabel} (all years)`
-                : `Expenses by Category (${currentMonthLabel})`}
-            </h3>
+          {/* Charts */}
+          <div className="bg-white rounded-lg shadow-md p-4 flex-1 space-y-8">
+            {/* EXPENSES CHART */}
+            <div>
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                {expenseChartTitle}
+              </h3>
 
-            {chartData.length === 0 ? (
-              <div className="text-center text-gray-500">
-                No data to draw chart.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis
-                    dataKey={
-                      isYearly
-                        ? 'monthLabel'
-                        : isMonthAcrossYears
-                        ? 'yearLabel'
-                        : 'category'
-                    }
-                    angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
-                    textAnchor={
-                      !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
-                    }
-                    height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
-                  />
-                  <YAxis />
-                  <Tooltip
-                    formatter={(value) =>
-                      formatCurrency(Number(value ?? 0), currency)
-                    }
-                  />
-                  {isYearly || isMonthAcrossYears ? (
-                    expenseCategories?.map((category) => {
-                      const color = getCategoryColor(category);
-                      return (
-                        <Bar
-                          key={category}
-                          dataKey={category}
-                          stackId="a"
-                          name={category}
-                          fill={color?.backgroundColor || '#ccc'}
-                        />
-                      );
-                    })
-                  ) : (
-                    <Bar
-                      dataKey="expense"
-                      name="Expense"
-                      shape={(props: any) => {
-                        const { x, y, width, height, payload } = props;
-                        const color = payload?.category
-                          ? getCategoryColor(payload.category)
-                              ?.backgroundColor || '#ccc'
-                          : '#ccc';
+              {expenseChartData.length === 0 ? (
+                <div className="text-center text-gray-500">
+                  No data to draw expenses chart.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={expenseChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey={
+                        isYearly
+                          ? 'monthLabel'
+                          : isMonthAcrossYears
+                          ? 'yearLabel'
+                          : 'category'
+                      }
+                      angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
+                      textAnchor={
+                        !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
+                      }
+                      height={
+                        !isYearly && !isMonthAcrossYears ? 70 : undefined
+                      }
+                    />
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value) =>
+                        formatCurrency(Number(value ?? 0), currency)
+                      }
+                    />
+                    {avgExpense > 0 && (
+                      <ReferenceLine
+                        y={avgExpense}
+                        stroke="#4b5563"
+                        strokeDasharray="4 4"
+                        label={{
+                          value: avgExpenseLabel,
+                          position: 'top',
+                          fill: '#4b5563',
+                          fontSize: 11,
+                        }}
+                      />
+                    )}
+                    {isYearly || isMonthAcrossYears ? (
+                      expenseCategories?.map((category) => {
+                        const color = getCategoryColor(category);
                         return (
-                          <rect
-                            x={x}
-                            y={y}
-                            width={width}
-                            height={height}
-                            fill={color}
-                            rx={6}
+                          <Bar
+                            key={category}
+                            dataKey={category}
+                            stackId="a"
+                            name={category}
+                            fill={color?.backgroundColor || '#ccc'}
                           />
                         );
-                      }}
+                      })
+                    ) : (
+                      <Bar
+                        dataKey="expense"
+                        name="Expense"
+                        shape={(props: any) => {
+                          const { x, y, width, height, payload } = props;
+                          const color = payload?.category
+                            ? getCategoryColor(payload.category)
+                                ?.backgroundColor || '#ccc'
+                            : '#ccc';
+                          return (
+                            <rect
+                              x={x}
+                              y={y}
+                              width={width}
+                              height={height}
+                              fill={color}
+                              rx={6}
+                            />
+                          );
+                        }}
+                      />
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+
+            {/* INCOME CHART */}
+            <div className="border-t border-gray-200 pt-4">
+              <h3 className="text-lg font-semibold mb-4 text-gray-800">
+                {incomeChartTitle}
+              </h3>
+
+              {incomeChartData.length === 0 ? (
+                <div className="text-center text-gray-500">
+                  No data to draw income chart.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart data={incomeChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey={
+                        isYearly
+                          ? 'monthLabel'
+                          : isMonthAcrossYears
+                          ? 'yearLabel'
+                          : 'category'
+                      }
+                      angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
+                      textAnchor={
+                        !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
+                      }
+                      height={
+                        !isYearly && !isMonthAcrossYears ? 70 : undefined
+                      }
                     />
-                  )}
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+                    <YAxis />
+                    <Tooltip
+                      formatter={(value) =>
+                        formatCurrency(Number(value ?? 0), currency)
+                      }
+                    />
+                    {avgIncome > 0 && (
+                      <ReferenceLine
+                        y={avgIncome}
+                        stroke="#4b5563"
+                        strokeDasharray="4 4"
+                        label={{
+                          value: avgIncomeLabel,
+                          position: 'top',
+                          fill: '#4b5563',
+                          fontSize: 11,
+                        }}
+                      />
+                    )}
+                    {isYearly || isMonthAcrossYears ? (
+                      <Bar
+                        dataKey="income"
+                        name="Income"
+                        fill="#16a34a"
+                      />
+                    ) : (
+                      <Bar
+                        dataKey="income"
+                        name="Income"
+                        shape={(props: any) => {
+                          const { x, y, width, height, payload } = props;
+                          const color = payload?.category
+                            ? getCategoryColor(payload.category)
+                                ?.backgroundColor || '#22c55e'
+                            : '#22c55e';
+                          return (
+                            <rect
+                              x={x}
+                              y={y}
+                              width={width}
+                              height={height}
+                              fill={color}
+                              rx={6}
+                            />
+                          );
+                        }}
+                      />
+                    )}
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
           </div>
         </div>
       </div>
