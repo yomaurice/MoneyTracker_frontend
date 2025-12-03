@@ -818,87 +818,91 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
               </h3>
 
               {expenseChartData.length === 0 ? (
-                <div className="text-center text-gray-500">
-                  No data to draw expenses chart.
-                </div>
-              ) : (
-                  {avgExpense > 0 && (
-                  <div className="text-right text-sm font-semibold text-gray-600 mb-1">
-                    Avg: {formatCurrency(avgExpense, currency)}
+                  <div className="text-center text-gray-500">
+                    No data to draw expenses chart.
                   </div>
-                )}
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={expenseChartData} margin={{ top: 30, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey={
-                        isYearly
-                          ? 'monthLabel'
-                          : isMonthAcrossYears
-                          ? 'yearLabel'
-                          : 'category'
-                      }
-                      angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
-                      textAnchor={
-                        !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
-                      }
-                      height={
-                        !isYearly && !isMonthAcrossYears ? 70 : undefined
-                      }
-                    />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value) =>
-                        formatCurrency(Number(value ?? 0), currency)
-                      }
-                    />
+                ) : (
+                  <>
                     {avgExpense > 0 && (
-                      <ReferenceLine
-                              y={avgExpense}
-                              stroke="#4b5563"
-                              strokeDasharray="4 4"
-                              ifOverflow="extendDomain"
-                            />
+                      <div className="text-right text-sm font-semibold text-gray-600 mb-1">
+                        Avg: {formatCurrency(avgExpense, currency)}
+                      </div>
                     )}
-                    {isYearly || isMonthAcrossYears ? (
-                      expenseCategories?.map((category) => {
-                        const color = getCategoryColor(category);
-                        return (
+
+                    <ResponsiveContainer width="100%" height={280}>
+                      <BarChart
+                        data={expenseChartData}
+                        margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey={
+                            isYearly
+                              ? 'monthLabel'
+                              : isMonthAcrossYears
+                              ? 'yearLabel'
+                              : 'category'
+                          }
+                          angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
+                          textAnchor={
+                            !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
+                          }
+                          height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
+                        />
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value) =>
+                            formatCurrency(Number(value ?? 0), currency)
+                          }
+                        />
+
+                        <ReferenceLine
+                          y={avgExpense}
+                          stroke="#4b5563"
+                          strokeDasharray="4 4"
+                          ifOverflow="extendDomain"
+                        />
+
+                        {isYearly || isMonthAcrossYears ? (
+                          expenseCategories?.map((category) => {
+                            const color = getCategoryColor(category);
+                            return (
+                              <Bar
+                                key={category}
+                                dataKey={category}
+                                stackId="a"
+                                name={category}
+                                fill={color?.backgroundColor || '#ccc'}
+                              />
+                            );
+                          })
+                        ) : (
                           <Bar
-                            key={category}
-                            dataKey={category}
-                            stackId="a"
-                            name={category}
-                            fill={color?.backgroundColor || '#ccc'}
+                            dataKey="expense"
+                            name="Expense"
+                            shape={(props: any) => {
+                              const { x, y, width, height, payload } = props;
+                              const color = payload?.category
+                                ? getCategoryColor(payload.category)?.backgroundColor || '#ccc'
+                                : '#ccc';
+                              return (
+                                <rect
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                                  fill={color}
+                                  rx={6}
+                                />
+                              );
+                            }}
                           />
-                        );
-                      })
-                    ) : (
-                      <Bar
-                        dataKey="expense"
-                        name="Expense"
-                        shape={(props: any) => {
-                          const { x, y, width, height, payload } = props;
-                          const color = payload?.category
-                            ? getCategoryColor(payload.category)
-                                ?.backgroundColor || '#ccc'
-                            : '#ccc';
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={color}
-                              rx={6}
-                            />
-                          );
-                        }}
-                      />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+                        )}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </>
+                )}
+
             </div>
 
             {/* INCOME CHART */}
@@ -907,95 +911,97 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                 {incomeChartTitle}
               </h3>
 
-              {incomeChartData.length === 0 ? (
-                <div className="text-center text-gray-500">
-                  No data to draw income chart.
-                </div>
-              ) : (
-                    {avgIncome > 0 && (
-                  <div className="text-right text-sm font-semibold text-gray-600 mb-1">
-                    Avg: {formatCurrency(avgIncome, currency)}
+                {incomeChartData.length === 0 ? (
+                  <div className="text-center text-gray-500">
+                    No data to draw income chart.
                   </div>
-                )}
-                <ResponsiveContainer width="100%" height={260}>
-                  <BarChart data={incomeChartData} margin={{ top: 30, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey={
-                        isYearly
-                          ? 'monthLabel'
-                          : isMonthAcrossYears
-                          ? 'yearLabel'
-                          : 'category'
-                      }
-                      angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
-                      textAnchor={
-                        !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
-                      }
-                      height={
-                        !isYearly && !isMonthAcrossYears ? 70 : undefined
-                      }
-                    />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value) =>
-                        formatCurrency(Number(value ?? 0), currency)
-                      }
-                    />
+                ) : (
+                  <>
                     {avgIncome > 0 && (
-                      <ReferenceLine
-                        y={avgIncome}
-                        stroke="#4b5563"
-                        strokeDasharray="4 4"
-                      />
+                      <div className="text-right text-sm font-semibold text-gray-600 mb-1">
+                        Avg: {formatCurrency(avgIncome, currency)}
+                      </div>
                     )}
-                    {isYearly || isMonthAcrossYears ? (
-                      <Bar
-                          dataKey="income"
-                          name="Income"
-                          shape={(props: any) => {
-                            const { x, y, width, height, payload } = props;
-                            const color = payload?.category
-                              ? getCategoryColor(payload.category)?.backgroundColor || '#22c55e'
-                              : '#22c55e';
-                            return (
-                              <rect
-                                x={x}
-                                y={y}
-                                width={width}
-                                height={height}
-                                fill={color}
-                                rx={6}     // FIX: rounded corners
-                              />
-                            );
-                          }}
+
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart
+                        data={incomeChartData}
+                        margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey={
+                            isYearly
+                              ? 'monthLabel'
+                              : isMonthAcrossYears
+                              ? 'yearLabel'
+                              : 'category'
+                          }
+                          angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
+                          textAnchor={
+                            !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
+                          }
+                          height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
                         />
-                    ) : (
-                      <Bar
-                        dataKey="income"
-                        name="Income"
-                        shape={(props: any) => {
-                          const { x, y, width, height, payload } = props;
-                          const color = payload?.category
-                            ? getCategoryColor(payload.category)
-                                ?.backgroundColor || '#22c55e'
-                            : '#22c55e';
-                          return (
-                            <rect
-                              x={x}
-                              y={y}
-                              width={width}
-                              height={height}
-                              fill={color}
-                              rx={6}
-                            />
-                          );
-                        }}
-                      />
-                    )}
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value) =>
+                            formatCurrency(Number(value ?? 0), currency)
+                          }
+                        />
+
+                        <ReferenceLine
+                          y={avgIncome}
+                          stroke="#4b5563"
+                          strokeDasharray="4 4"
+                          ifOverflow="extendDomain"
+                        />
+
+                        {isYearly || isMonthAcrossYears ? (
+                          <Bar
+                            dataKey="income"
+                            name="Income"
+                            shape={(props: any) => {
+                              const { x, y, width, height } = props;
+                              return (
+                                <rect
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                                  fill="#22c55e"
+                                  rx={6}
+                                />
+                              );
+                            }}
+                          />
+                        ) : (
+                          <Bar
+                            dataKey="income"
+                            name="Income"
+                            shape={(props: any) => {
+                              const { x, y, width, height, payload } = props;
+                              const color = payload?.category
+                                ? getCategoryColor(payload.category)?.backgroundColor || '#22c55e'
+                                : '#22c55e';
+                              return (
+                                <rect
+                                  x={x}
+                                  y={y}
+                                  width={width}
+                                  height={height}
+                                  fill={color}
+                                  rx={6}
+                                />
+                              );
+                            }}
+                          />
+                        )}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </>
+                )}
+
             </div>
           </div>
         </div>
