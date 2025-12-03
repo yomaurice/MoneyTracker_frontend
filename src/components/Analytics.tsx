@@ -761,7 +761,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
         <div className="lg:col-span-2 flex flex-col gap-6 order-1 lg:order-2">
           {/* Summary */}
           <div className="flex justify-end">
-            <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-1/2 lg:w-4/5">
+            <div className="bg-white rounded-lg shadow-md p-4 w-full md:w-3/4 lg:w-5/6">
               <h3 className="text-lg font-medium text-gray-800">
                 {summaryTitle}
               </h3>
@@ -773,7 +773,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-green-600 font-medium">
                     Income
                   </div>
-                  <div className="text-xl md:text-2xl font-bold text-green-700 leading-tight break-words">
+                  <div className="text-xl md:text-2xl font-bold text-green-700 leading-tight whitespace-nowrap">
                     {formatCurrency(income, currency)}
                   </div>
                 </div>
@@ -781,7 +781,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   <div className="text-sm text-red-600 font-medium">
                     Expenses
                   </div>
-                  <div className="text-xl md:text-2xl font-bold text-red-700 leading-tight break-words">
+                  <div className="text-xl md:text-2xl font-bold text-red-700 leading-tight whitespace-nowrap">
                     {formatCurrency(expense, currency)}
                   </div>
                 </div>
@@ -798,7 +798,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     Net
                   </div>
                   <div
-                    className={`text-xl md:text-2xl font-bold leading-tight break-words ${
+                    className={`text-xl md:text-2xl font-bold leading-tight break-nowrap ${
                       net >= 0 ? 'text-blue-700' : 'text-orange-700'
                     }`}
                   >
@@ -849,16 +849,18 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     />
                     {avgExpense > 0 && (
                       <ReferenceLine
-                        y={avgExpense}
-                        stroke="#4b5563"
-                        strokeDasharray="4 4"
-                        label={{
-                          value: avgExpenseLabel,
-                          position: 'top',
-                          fill: '#4b5563',
-                          fontSize: 11,
-                        }}
-                      />
+                              y={avgExpense}
+                              stroke="#4b5563"
+                              strokeDasharray="4 4"
+                              label={{
+                                value: avgExpenseLabel,
+                                position: 'insideTopRight',
+                                offset: 10,                // FIX: forces label above bars
+                                fill: '#4b5563',
+                                fontSize: 12,
+                                fontWeight: 'bold',
+                              }}
+                            />
                     )}
                     {isYearly || isMonthAcrossYears ? (
                       expenseCategories?.map((category) => {
@@ -945,6 +947,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         label={{
                           value: avgIncomeLabel,
                           position: 'top',
+                          offset: 10,
                           fill: '#4b5563',
                           fontSize: 11,
                         }}
@@ -952,10 +955,25 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                     )}
                     {isYearly || isMonthAcrossYears ? (
                       <Bar
-                        dataKey="income"
-                        name="Income"
-                        fill="#16a34a"
-                      />
+                          dataKey="income"
+                          name="Income"
+                          shape={(props: any) => {
+                            const { x, y, width, height, payload } = props;
+                            const color = payload?.category
+                              ? getCategoryColor(payload.category)?.backgroundColor || '#22c55e'
+                              : '#22c55e';
+                            return (
+                              <rect
+                                x={x}
+                                y={y}
+                                width={width}
+                                height={height}
+                                fill={color}
+                                rx={6}     // FIX: rounded corners
+                              />
+                            );
+                          }}
+                        />
                     ) : (
                       <Bar
                         dataKey="income"
