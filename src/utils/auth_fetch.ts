@@ -1,22 +1,43 @@
-export const authFetch = (url: string, options: RequestInit = {}) => {
+export const authFetch = async (
+  url: string,
+  options: RequestInit = {},
+  skipRedirect = false   // ✅ NEW: optional flag
+) => {
   const token = localStorage.getItem('token');
 
   const defaultHeaders: HeadersInit = {
-    'Authorization': `Bearer ${token}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     'Content-Type': 'application/json',
   };
 
-  return fetch(url, {
+  const res = await fetch(url, {
     ...options,
     headers: {
       ...defaultHeaders,
       ...(options.headers || {}),
     },
-    credentials: 'include', // Important if backend uses cookies/sessions
+    credentials: 'include',
   });
+
+  // ✅ Determine if we are currently on auth pages
+  const isAuthPage =
+    typeof window !== 'undefined' &&
+    ['/login', '/signup'].includes(window.location.pathname);
+
+  // ✅ Only redirect if:
+  // - Unauthorized
+  // - NOT skipping redirect
+  // - NOT already on login/signup
+  if (res.status === 401 && !skipRedirect && !isAuthPage) {
+    console.warn('Unauthorized – redirecting to login');
+    window.location.href = '/login';
+    return res;
+  }
+
+  return res;
 };
 
 export const logout = () => {
   localStorage.removeItem('token');
-  window.location.href = '/'; // or wherever your login/home page is
+  window.location.href = '/login';
 };
