@@ -147,8 +147,15 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   }, [categoryFilter]);
 
   useEffect(() => {
-    fetchAnalytics(true);
-  }, []);
+  const isAuthSettling =
+    typeof window !== 'undefined' &&
+    sessionStorage.getItem('authSettling') === 'true';
+
+  if (isAuthSettling) return;
+
+  fetchAnalytics(true);
+    }, []);
+
 
   // ---- Categories ----
   useEffect(() => {

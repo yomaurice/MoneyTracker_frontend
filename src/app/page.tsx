@@ -14,6 +14,10 @@ export default function Home() {
   const [selectedTransaction, setSelectedTransaction] = useState(null)
   const { currency, setCurrency } = useCurrency();
 
+  useEffect(() => {
+    sessionStorage.removeItem('authSettling');
+  }, []);
+
 
   useEffect(() => {
     const token = localStorage.getItem('token')

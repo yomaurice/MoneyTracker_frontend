@@ -40,9 +40,17 @@ export default function Login() {
       });
 
       if (res.ok) {
-        setWarmingUp(false);
-        router.push('/');
-        return;
+          setWarmingUp(false);
+
+          localStorage.setItem('token', data.token);
+
+          // ✅ NEW: mark auth as stabilizing
+          sessionStorage.setItem('authSettling', 'true');
+
+          // ✅ then navigate
+          router.push('/');
+
+          return;
       }
 
       // ❗ On first attempt, backend may still stabilizing
