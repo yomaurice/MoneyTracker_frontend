@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { waitForBackend } from '../src/utils/backendStatus';
+import { waitForBackend } from '../../utils/backendStatus';
 
 
 export default function Login() {
