@@ -40,18 +40,19 @@ export default function Login() {
       });
 
       if (res.ok) {
-          setWarmingUp(false);
+          const data = await res.json();   // ✅ FIX: data declared first
 
+          // ✅ Store token BEFORE navigation
           localStorage.setItem('token', data.token);
 
-          // ✅ NEW: mark auth as stabilizing
+          // ✅ Mark auth as stabilizing
           sessionStorage.setItem('authSettling', 'true');
 
-          // ✅ then navigate
-          router.push('/');
+          setWarmingUp(false);
 
+          router.push('/');
           return;
-      }
+        }
 
       // ❗ On first attempt, backend may still stabilizing
       if (attempt < 3) {
