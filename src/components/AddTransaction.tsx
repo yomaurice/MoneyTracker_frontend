@@ -33,7 +33,9 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
   const [recurrenceMonths, setRecurrenceMonths] = useState(1);
 
   const initialized = useRef(false);
-
+    useEffect(() => {
+        sessionStorage.removeItem('authSettling');
+        }, []);
   // ------------------------
   // 1️⃣ Load Categories when type changes
   // ------------------------

@@ -28,11 +28,19 @@ export const authFetch = async (
   // - Unauthorized
   // - NOT skipping redirect
   // - NOT already on login/signup
-  if (res.status === 401 && !skipRedirect && !isAuthPage) {
-    console.warn('Unauthorized – redirecting to login');
-    window.location.href = '/login';
-    return res;
-  }
+  const isAuthSettling =
+  typeof window !== 'undefined' &&
+  sessionStorage.getItem('authSettling') === 'true';
+
+    if (
+      res.status === 401 &&
+      !skipRedirect &&
+      !isAuthPage &&
+      !isAuthSettling   // ✅ CRITICAL
+    ) {
+      console.warn('Unauthorized – redirecting to login');
+      window.location.href = '/login';
+    }
 
   return res;
 };
