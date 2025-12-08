@@ -749,126 +749,132 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
       {/* Main grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT – list of expenses */}
+         {/* LEFT – list of transactions */}
         <div className="lg:col-span-1 order-2 lg:order-1">
           <div className="bg-white rounded-lg shadow-md p-4 h-full flex flex-col">
+            {/* Header + toggle */}
             <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        {listType === 'expense'
-                          ? isYearly
-                            ? `Latest Expenses (${selectedYear}${
-                                selectedYearlyMonth !== 'all'
-                                  ? ` - ${selectedMonthLabel}`
-                                  : ''
-                              })`
-                            : isMonthAcrossYears
-                            ? `Latest Expenses (${selectedMonthLabel} – all years)`
-                            : `Expenses in ${currentMonthLabel}`
-                          : isYearly
-                          ? `Latest Income (${selectedYear}${
-                              selectedYearlyMonth !== 'all'
-                                ? ` - ${selectedMonthLabel}`
-                                : ''
-                            })`
-                          : isMonthAcrossYears
-                          ? `Latest Income (${selectedMonthLabel} – all years)`
-                          : `Income in ${currentMonthLabel}`}
-                      </h3>
+              <h3 className="text-lg font-semibold text-gray-800">
+                {listType === 'expense'
+                  ? isYearly
+                    ? `Latest Expenses (${selectedYear}${
+                        selectedYearlyMonth !== 'all'
+                          ? ` - ${selectedMonthLabel}`
+                          : ''
+                      })`
+                    : isMonthAcrossYears
+                    ? `Latest Expenses (${selectedMonthLabel} – all years)`
+                    : `Expenses in ${currentMonthLabel}`
+                  : isYearly
+                  ? `Latest Income (${selectedYear}${
+                      selectedYearlyMonth !== 'all'
+                        ? ` - ${selectedMonthLabel}`
+                        : ''
+                    })`
+                  : isMonthAcrossYears
+                  ? `Latest Income (${selectedMonthLabel} – all years)`
+                  : `Income in ${currentMonthLabel}`}
+              </h3>
 
-                      {/* ✅ Toggle */}
-                      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                        <button
-                          onClick={() => setListType('expense')}
-                          className={`px-3 py-1 text-xs rounded-md ${
-                            listType === 'expense'
-                              ? 'bg-white shadow text-gray-900'
-                              : 'text-gray-500'
-                          }`}
-                        >
-                          Expenses
-                        </button>
-                        <button
-                          onClick={() => setListType('income')}
-                          className={`px-3 py-1 text-xs rounded-md ${
-                            listType === 'income'
-                              ? 'bg-white shadow text-gray-900'
-                              : 'text-gray-500'
-                          }`}
-                        >
-                          Income
-                        </button>
-                      </div>
+              {/* Toggle */}
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setListType('expense')}
+                  className={`px-3 py-1 text-xs rounded-md ${
+                    listType === 'expense'
+                      ? 'bg-white shadow text-gray-900'
+                      : 'text-gray-500'
+                  }`}
+                >
+                  Expenses
+                </button>
+                <button
+                  onClick={() => setListType('income')}
+                  className={`px-3 py-1 text-xs rounded-md ${
+                    listType === 'income'
+                      ? 'bg-white shadow text-gray-900'
+                      : 'text-gray-500'
+                  }`}
+                >
+                  Income
+                </button>
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="overflow-y-auto flex-1">
+              {activeList.length === 0 ? (
+                <div className="text-sm text-gray-500">
+                  No {listType === 'expense' ? 'expenses' : 'income'} to show.
+                </div>
+              ) : (
+                activeList.map((tx: any) => (
+                  <div
+                    key={tx.id}
+                    className="border-b border-gray-200 py-2 last:border-none"
+                  >
+                    <div className="flex justify-between items-center text-sm">
+                      {(() => {
+                        const color = getCategoryColor(tx.category);
+                        return (
+                          <span
+                            style={{
+                              backgroundColor: color.backgroundColor,
+                              color: color.color,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                            }}
+                          >
+                            {tx.category}
+                          </span>
+                        );
+                      })()}
+
+                      <span
+                        className={
+                          tx.type === 'expense'
+                            ? 'text-red-600'
+                            : 'text-green-600'
+                        }
+                      >
+                        {formatCurrency(tx.amount, currency)}
+                      </span>
                     </div>
 
-            <div className="overflow-y-auto flex-1">
-              {activeList.length === 0 && (
-                <div className="text-sm text-gray-500">
-                  No expenses to show.
-                </div>
-              )}
-              {activeList.length === 0 && (
-                <div
-                  key={tx.id}
-                  className="border-b border-gray-200 py-2 last:border-none"
-                >
-                  <div className="flex justify-between items-center text-sm">
-                    {(() => {
-                      const color = getCategoryColor(tx.category);
-                      return (
-                        <span
-                          style={{
-                            backgroundColor: color.backgroundColor,
-                            color: color.color,
-                            padding: '2px 8px',
-                            borderRadius: '6px',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                          }}
-                        >
-                          {tx.category}
-                        </span>
-                      );
-                    })()}
-                    <span
-                      className={
-                        tx.type === 'expense'
-                          ? 'text-red-600'
-                          : 'text-green-600'
-                      }
-                    >
+                    <div className="flex justify-between items-center text-xs text-gray-500 mt-0.5">
+                      <span>
+                        {new Date(tx.date).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </span>
+                      <span className="italic">{tx.description}</span>
+                    </div>
 
-                      {formatCurrency(tx.amount, currency)}
-                    </span>
+                    <div className="mt-2 flex gap-2 text-xs">
+                      <button
+                        onClick={() => handleEdit(tx)}
+                        className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(tx.id)}
+                        className="px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-xs text-gray-500 mt-0.5">
-                    <span>
-                      {new Date(tx.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
-                    <span className="italic">{tx.description}</span>
-                  </div>
-                  <div className="mt-2 flex gap-2 text-xs">
-                    <button
-                      onClick={() => handleEdit(tx)}
-                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(tx.id)}
-                      className="px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
+
 
         {/* RIGHT – Summary + charts */}
         <div className="lg:col-span-2 flex flex-col gap-6 order-1 lg:order-2">
