@@ -16,7 +16,6 @@ export const authFetch = async (
       ...defaultHeaders,
       ...(options.headers || {}),
     },
-    credentials: 'include',
   });
 
   // ✅ Determine if we are currently on auth pages
