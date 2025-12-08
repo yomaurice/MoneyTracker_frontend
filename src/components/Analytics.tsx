@@ -86,6 +86,8 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [listType, setListType] = useState<'expense' | 'income'>('expense');
+
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
 
   const [categoryColors, setCategoryColors] = useState<
@@ -332,6 +334,31 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return list.sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
+    const buildYearlyIncomeList = () => {
+    if (!rawAnalytics?.details) return [];
+    const y = String(selectedYear);
+    let list: any[] = [];
+
+    Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
+      if (!periodKey.startsWith(`${y}-`)) return;
+      const [, monthStr] = periodKey.split('-');
+      if (
+        selectedYearlyMonth !== 'all' &&
+        monthStr !== selectedYearlyMonth
+      )
+        return;
+
+      txArray.forEach((tx) => {
+        if (tx.type === 'income') {
+          list.push(tx);
+        }
+      });
+    });
+
+    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  };
+
+
   // ---- MONTH ACROSS YEARS (same month, all years) ----
   const computeMonthAcrossYearsSummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
@@ -392,6 +419,25 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return list.sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
+    const buildMonthAcrossYearsIncomeList = () => {
+    if (!rawAnalytics?.details) return [];
+    let list: any[] = [];
+
+    Object.entries(rawAnalytics.details).forEach(([periodKey, txArray]) => {
+      const [, monthStr] = periodKey.split('-');
+      if (monthStr !== selectedYearlyMonth) return;
+
+      txArray.forEach((tx) => {
+        if (tx.type === 'income') {
+          list.push(tx);
+        }
+      });
+    });
+
+    return list.sort((a, b) => (a.date < b.date ? 1 : -1));
+  };
+
+
   // ---- MONTHLY (single month) ----
   const computeMonthlySummary = () => {
     if (!rawAnalytics?.summary) return { income: 0, expense: 0 };
@@ -443,6 +489,15 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       .sort((a, b) => (a.date < b.date ? 1 : -1));
   };
 
+    const buildMonthlyIncomeList = () => {
+    if (!rawAnalytics?.details) return [];
+    const arr = rawAnalytics.details[selectedMonth] || [];
+    return arr
+      .filter((tx) => tx.type === 'income')
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
+  };
+
+
   // ---- loading / empty ----
   if (loading)
     return <div className="bg-white p-6 text-center">Loading…</div>;
@@ -457,23 +512,30 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   let expenseChartData: any[] = [];
   let incomeChartData: any[] = [];
   let expenseList: any[] = [];
+  let incomeList: any[] = [];
 
-  if (isYearly) {
+    if (isYearly) {
     ({ income, expense } = computeYearlySummary());
     expenseChartData = buildYearlyExpenseChartData();
     incomeChartData = buildYearlyIncomeChartData();
     expenseList = buildYearlyExpenseList();
+    incomeList = buildYearlyIncomeList(); // ✅ NEW
   } else if (isMonthAcrossYears) {
     ({ income, expense } = computeMonthAcrossYearsSummary());
     expenseChartData = buildMonthAcrossYearsExpenseChartData();
     incomeChartData = buildMonthAcrossYearsIncomeChartData();
     expenseList = buildMonthAcrossYearsExpenseList();
+    incomeList = buildMonthAcrossYearsIncomeList(); // ✅ NEW
   } else {
     ({ income, expense } = computeMonthlySummary());
     expenseChartData = buildMonthlyExpenseChartData();
     incomeChartData = buildMonthlyIncomeChartData();
     expenseList = buildMonthlyExpenseList();
+    incomeList = buildMonthlyIncomeList(); // ✅ NEW
   }
+
+  const activeList =
+    listType === 'expense' ? expenseList : incomeList;
 
   // Averages for charts
   const expenseValueKeys =
@@ -690,24 +752,61 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
         {/* LEFT – list of expenses */}
         <div className="lg:col-span-1 order-2 lg:order-1">
           <div className="bg-white rounded-lg shadow-md p-4 h-full flex flex-col">
-            <h3 className="text-lg font-semibold mb-3 text-gray-800">
-              {isYearly
-                ? `Latest Expenses (${selectedYear}${
-                    selectedYearlyMonth !== 'all'
-                      ? ` - ${selectedMonthLabel}`
-                      : ''
-                  })`
-                : isMonthAcrossYears
-                ? `Latest Expenses (${selectedMonthLabel} – all years)`
-                : `Expenses in ${currentMonthLabel}`}
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-800">
+                        {listType === 'expense'
+                          ? isYearly
+                            ? `Latest Expenses (${selectedYear}${
+                                selectedYearlyMonth !== 'all'
+                                  ? ` - ${selectedMonthLabel}`
+                                  : ''
+                              })`
+                            : isMonthAcrossYears
+                            ? `Latest Expenses (${selectedMonthLabel} – all years)`
+                            : `Expenses in ${currentMonthLabel}`
+                          : isYearly
+                          ? `Latest Income (${selectedYear}${
+                              selectedYearlyMonth !== 'all'
+                                ? ` - ${selectedMonthLabel}`
+                                : ''
+                            })`
+                          : isMonthAcrossYears
+                          ? `Latest Income (${selectedMonthLabel} – all years)`
+                          : `Income in ${currentMonthLabel}`}
+                      </h3>
+
+                      {/* ✅ Toggle */}
+                      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                        <button
+                          onClick={() => setListType('expense')}
+                          className={`px-3 py-1 text-xs rounded-md ${
+                            listType === 'expense'
+                              ? 'bg-white shadow text-gray-900'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          Expenses
+                        </button>
+                        <button
+                          onClick={() => setListType('income')}
+                          className={`px-3 py-1 text-xs rounded-md ${
+                            listType === 'income'
+                              ? 'bg-white shadow text-gray-900'
+                              : 'text-gray-500'
+                          }`}
+                        >
+                          Income
+                        </button>
+                      </div>
+                    </div>
+
             <div className="overflow-y-auto flex-1">
-              {expenseList.length === 0 && (
+              {activeList.length === 0 && (
                 <div className="text-sm text-gray-500">
                   No expenses to show.
                 </div>
               )}
-              {expenseList.map((tx: any) => (
+              {activeList.length === 0 && (
                 <div
                   key={tx.id}
                   className="border-b border-gray-200 py-2 last:border-none"
@@ -730,7 +829,14 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         </span>
                       );
                     })()}
-                    <span className="text-red-600">
+                    <span
+                      className={
+                        tx.type === 'expense'
+                          ? 'text-red-600'
+                          : 'text-green-600'
+                      }
+                    >
+
                       {formatCurrency(tx.amount, currency)}
                     </span>
                   </div>
