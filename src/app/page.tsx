@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AddTransaction from '../components/AddTransaction'
 import Analytics from '../components/Analytics'
-import { logout } from '../utils/auth_fetch';
+import { logout } from '../utils/logout';
 import { useCurrency } from '../context/CurrencyContext';
 
 export default function Home() {
