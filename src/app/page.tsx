@@ -8,6 +8,9 @@ import { logout } from '../utils/logout';
 import { authFetch } from '../utils/auth_fetch';
 import { useCurrency } from '../context/CurrencyContext';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+
+
 export default function Home() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('add')
