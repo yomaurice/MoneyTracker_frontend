@@ -1,50 +1,37 @@
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
 export const authFetch = async (
   url: string,
   options: RequestInit = {},
-  skipRedirect = false   // ✅ NEW: optional flag
+  skipRedirect = false
 ) => {
-  const token = localStorage.getItem('token');
-
-  const defaultHeaders: HeadersInit = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    'Content-Type': 'application/json',
-  };
-
-  const res = await fetch(url, {
+  // 1️⃣ First attempt: normal request (cookies auto-attached)
+  let res = await fetch(url, {
     ...options,
-    headers: {
-      ...defaultHeaders,
-      ...(options.headers || {}),
-    },
+    credentials: 'include', // ✅ REQUIRED
   });
 
-  // ✅ Determine if we are currently on auth pages
-  const isAuthPage =
-    typeof window !== 'undefined' &&
-    ['/login', '/signup'].includes(window.location.pathname);
+  // 2️⃣ If access token expired → try refresh ONCE
+  if (res.status === 401) {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    });
 
-  // ✅ Only redirect if:
-  // - Unauthorized
-  // - NOT skipping redirect
-  // - NOT already on login/signup
-  const isAuthSettling =
-  typeof window !== 'undefined' &&
-  sessionStorage.getItem('authSettling') === 'true';
-
-    if (
-      res.status === 401 &&
-      !skipRedirect &&
-      !isAuthPage &&
-      !isAuthSettling   // ✅ CRITICAL
-    ) {
-      console.warn('Unauthorized – redirecting to login');
-      window.location.href = '/login';
+    // ✅ Refresh succeeded → retry original request
+    if (refreshRes.ok) {
+      res = await fetch(url, {
+        ...options,
+        credentials: 'include',
+      });
+      return res;
     }
 
-  return res;
-};
+    // ❌ Refresh failed → user is really logged out
+    if (!skipRedirect && typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+  }
 
-export const logout = () => {
-  localStorage.removeItem('token');
-  window.location.href = '/login';
+  return res;
 };

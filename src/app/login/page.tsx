@@ -34,16 +34,14 @@ export default function Login() {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const res = await fetch(`${API_BASE_URL}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // VERY IMPORTANT
+      body: JSON.stringify({ username, password }),
+    });
 
       if (res.ok) {
           const data = await res.json();   // ✅ FIX: data declared first
-
-          // ✅ Store token BEFORE navigation
-          localStorage.setItem('token', data.token);
 
           // ✅ Mark auth as stabilizing
           sessionStorage.setItem('authSettling', 'true');

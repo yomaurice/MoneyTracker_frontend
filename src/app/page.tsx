@@ -20,11 +20,15 @@ export default function Home() {
 
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login') // or /signup if preferred
+  const checkAuth = async () => {
+    const res = await authFetch(`${API_BASE_URL}/api/me`, {}, true);
+    if (!res.ok) {
+      router.push('/login');
     }
-  }, [])
+  };
+
+  checkAuth();
+}, []);
 
 
   const handleTransactionAdded = () => {
@@ -38,10 +42,14 @@ export default function Home() {
   }
 
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    router.push('/login');
-  };
+  const logout = async () => {
+  await fetch(`${API_BASE_URL}/api/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+
+  router.push('/login');
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
