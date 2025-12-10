@@ -36,7 +36,13 @@ export const authFetch = async (
 
     console.error('[authFetch] refresh FAILED');
 
-    if (!skipRedirect && typeof window !== 'undefined') {
+    const isAuthCheck = url.endsWith('/api/me');
+
+    if (
+      !skipRedirect &&
+      isAuthCheck &&
+      typeof window !== 'undefined'
+    ) {
       console.error('[authFetch] redirecting to /login');
       window.location.href = '/login';
     }
