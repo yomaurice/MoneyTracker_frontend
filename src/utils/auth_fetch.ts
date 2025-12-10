@@ -5,30 +5,39 @@ export const authFetch = async (
   options: RequestInit = {},
   skipRedirect = false
 ) => {
-  // 1️⃣ First attempt: normal request (cookies auto-attached)
+  console.log('[authFetch] request →', url);
+
   let res = await fetch(url, {
     ...options,
-    credentials: 'include', // ✅ REQUIRED
+    credentials: 'include',
   });
 
-  // 2️⃣ If access token expired → try refresh ONCE
+  console.log('[authFetch] response →', res.status, url);
+
   if (res.status === 401) {
+    console.warn('[authFetch] 401 → trying refresh');
+
     const refreshRes = await fetch(`${API_BASE_URL}/api/refresh`, {
       method: 'POST',
       credentials: 'include',
     });
 
-    // ✅ Refresh succeeded → retry original request
+    console.log('[authFetch] refresh →', refreshRes.status);
+
     if (refreshRes.ok) {
+      console.log('[authFetch] retrying original request');
       res = await fetch(url, {
         ...options,
         credentials: 'include',
       });
+      console.log('[authFetch] retry result →', res.status);
       return res;
     }
 
-    // ❌ Refresh failed → user is really logged out
+    console.error('[authFetch] refresh FAILED');
+
     if (!skipRedirect && typeof window !== 'undefined') {
+      console.error('[authFetch] redirecting to /login');
       window.location.href = '/login';
     }
   }

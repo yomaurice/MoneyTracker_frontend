@@ -24,14 +24,14 @@ export default function Home() {
 
 
       useEffect(() => {
-      const checkAuth = async () => {
-        const res = await authFetch(`${API_BASE_URL}/api/me`);
-        // ❗ DO NOTHING HERE
-        // authFetch will redirect if the user is truly logged out
-      };
+  const checkAuth = async () => {
+    console.log('[page] checking auth');
+    const res = await authFetch(`${API_BASE_URL}/api/me`);
+    console.log('[page] /api/me final status →', res.status);
+  };
 
-      checkAuth();
-    }, []);
+  checkAuth();
+}, []);
 
 
   const handleTransactionAdded = () => {
