@@ -23,16 +23,15 @@ export default function Home() {
   }, []);
 
 
-  useEffect(() => {
-  const checkAuth = async () => {
-    const res = await authFetch(`${API_BASE_URL}/api/me`, {}, true);
-    if (!res.ok) {
-      router.push('/login');
-    }
-  };
+      useEffect(() => {
+      const checkAuth = async () => {
+        const res = await authFetch(`${API_BASE_URL}/api/me`);
+        // ❗ DO NOTHING HERE
+        // authFetch will redirect if the user is truly logged out
+      };
 
-  checkAuth();
-}, []);
+      checkAuth();
+    }, []);
 
 
   const handleTransactionAdded = () => {
