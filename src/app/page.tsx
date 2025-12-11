@@ -4,12 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import AddTransaction from '../components/AddTransaction'
 import Analytics from '../components/Analytics'
-import { logout } from '../utils/logout';
+import { logout as performLogout } from '../utils/logout';   // 👈 rename import
 import { authFetch } from '../utils/auth_fetch';
 import { useCurrency } from '../context/CurrencyContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
-
 
 export default function Home() {
   const router = useRouter()
@@ -18,41 +17,49 @@ export default function Home() {
   const [selectedTransaction, setSelectedTransaction] = useState(null)
   const { currency, setCurrency } = useCurrency();
 
+  const [user, setUser] = useState<{ username: string } | null>(null);
+
+  // -------- AUTH SETTLING CLEANUP --------
   useEffect(() => {
     sessionStorage.removeItem('authSettling');
   }, []);
 
+  // -------- CHECK AUTH ON PAGE LOAD --------
+  useEffect(() => {
+    const checkAuth = async () => {
+      console.log('[page] checking auth');
+      const res = await authFetch(`${API_BASE_URL}/api/me`);
+      console.log('[page] /api/me final status →', res.status);
+    };
 
-      useEffect(() => {
-  const checkAuth = async () => {
-    console.log('[page] checking auth');
-    const res = await authFetch(`${API_BASE_URL}/api/me`);
-    console.log('[page] /api/me final status →', res.status);
+    checkAuth();
+  }, []);
+
+  // -------- LOAD USERNAME --------
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/me`);
+
+        if (res.ok) {
+          const data = await res.json();
+          setUser({ username: data.username });
+        }
+      } catch (err) {
+        console.error("Failed to fetch /api/me:", err);
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  // -------- LOGOUT BUTTON HANDLER --------
+  const handleLogout = async () => {
+    await performLogout(); // uses utils/logout
+    router.push('/login');
   };
 
-  checkAuth();
-}, []);
-
-    const [user, setUser] = useState<{ username: string } | null>(null);
-
-    useEffect(() => {
-      const loadUser = async () => {
-        try {
-          const res = await authFetch(`${API_BASE_URL}/api/me`);
-
-          if (res.ok) {
-            const data = await res.json();
-            setUser({ username: data.username });
-          }
-        } catch (err) {
-          console.error("Failed to fetch /api/me:", err);
-        }
-      };
-
-  loadUser();
-}, []);
-
-
+  // -------- TRANSACTION HANDLERS --------
   const handleTransactionAdded = () => {
     setRefreshAnalytics((prev) => prev + 1)
     setSelectedTransaction(null)
@@ -63,29 +70,24 @@ export default function Home() {
     setActiveTab('add')
   }
 
-
-  const logout = async () => {
-  await fetch(`${API_BASE_URL}/api/logout`, {
-    method: 'POST',
-    credentials: 'include',
-  });
-
-  router.push('/login');
-};
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
           Money Tracker
         </h1>
+
+        {/* ------------------ TOP BAR ------------------ */}
         <div className="flex justify-end items-center gap-3 mb-4">
-          {username && (
+
+          {/* 👇 FIXED USERNAME DISPLAY */}
+          {user?.username && (
             <span className="text-sm text-gray-700">
-              Hello,&nbsp;<span className="font-semibold">{username}</span>
+              Hello,&nbsp;<span className="font-semibold">{user.username}</span>
             </span>
           )}
 
+          {/* Currency Picker */}
           <select
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
@@ -97,14 +99,16 @@ export default function Home() {
             <option value="ILS">ILS ₪</option>
           </select>
 
+          {/* Logout */}
           <button
-            onClick={logout}
+            onClick={handleLogout}
             className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
           >
             Logout
           </button>
         </div>
 
+        {/* ------------------ TAB BUTTONS ------------------ */}
         <div className="flex justify-center mb-8">
           <div className="bg-white rounded-lg shadow-md p-1">
             <button
@@ -120,6 +124,7 @@ export default function Home() {
             >
               Add Transaction
             </button>
+
             <button
               onClick={() => setActiveTab('analytics')}
               className={`px-6 py-3 rounded-md font-medium transition-colors ${
@@ -133,6 +138,7 @@ export default function Home() {
           </div>
         </div>
 
+        {/* ------------------ MAIN CONTENT ------------------ */}
         <div className="max-w-4xl mx-auto">
           {activeTab === 'add' && (
             <AddTransaction
@@ -140,6 +146,7 @@ export default function Home() {
               transactionToEdit={selectedTransaction}
             />
           )}
+
           {activeTab === 'analytics' && (
             <Analytics key={refreshAnalytics} onEdit={handleEditTransaction} />
           )}
