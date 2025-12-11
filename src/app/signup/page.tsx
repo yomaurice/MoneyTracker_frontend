@@ -8,6 +8,8 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [email, setEmail] = useState('');
+
 
   const router = useRouter();
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
@@ -44,7 +46,7 @@ export default function Signup() {
     const res = await fetch(`${API_BASE_URL}/api/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, email }),
     });
 
     if (res.ok) {
@@ -97,6 +99,18 @@ export default function Signup() {
               required
             />
           </div>
+
+          <div>
+          <label className="block text-gray-700">Email</label>
+              <input
+                type="email"
+                className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+        </div>
+
 
           {/* Error message (from backend only) */}
           {errorMsg && (

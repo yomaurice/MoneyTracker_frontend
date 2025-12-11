@@ -1,68 +1,38 @@
-'use client';
+'use client'
+import { useState } from 'react';
 
-import { useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+export default function ForgotPassword() {
+  const [email, setEmail] = useState('');
+  const [msg, setMsg] = useState('');
 
-export default function ResetPassword() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const tokenFromURL = searchParams.get("token") || "";
+  const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
-  const [token, setToken] = useState(tokenFromURL);
-  const [newPassword, setNewPassword] = useState("");
-  const [message, setMessage] = useState("");
-
-  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  const submitReset = async (e: React.FormEvent) => {
+  const submit = async (e: any) => {
     e.preventDefault();
+    setMsg("Sending...");
 
-    const res = await fetch(`${API_BASE_URL}/api/reset_password`, {
+    const res = await fetch(`${API}/api/request_password_reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, new_password: newPassword }),
+      body: JSON.stringify({ email }),
     });
 
     const data = await res.json();
-    setMessage(data.message);
-
-    if (res.ok) {
-      setTimeout(() => router.push("/login"), 1500);
-    }
+    setMsg(data.message);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <div className="bg-white p-6 rounded shadow max-w-md w-full">
-        <h1 className="text-xl font-bold mb-4">Enter New Password</h1>
-
-        <form onSubmit={submitReset} className="space-y-3">
-          {!tokenFromURL && (
-            <input
-              type="text"
-              className="w-full p-2 border rounded"
-              placeholder="Reset token"
-              value={token}
-              onChange={e => setToken(e.target.value)}
-            />
-          )}
-
-          <input
-            type="password"
-            className="w-full p-2 border rounded"
-            placeholder="New password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-          />
-
-          <button className="w-full bg-green-600 text-white p-2 rounded">
-            Reset Password
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="bg-white p-6 rounded-xl shadow w-full max-w-md">
+        <h1 className="text-xl font-bold mb-4">Reset Password</h1>
+        <form onSubmit={submit} className="space-y-4">
+          <input type="email" value={email} onChange={e=>setEmail(e.target.value)}
+            required className="w-full border p-2 rounded" placeholder="Your email" />
+          <button className="w-full bg-blue-600 text-white p-2 rounded">
+            Send Reset Link
           </button>
         </form>
-
-        {message && (
-          <p className="mt-3 text-sm text-gray-700 text-center">{message}</p>
-        )}
+        {msg && <p className="mt-3 text-center text-gray-700">{msg}</p>}
       </div>
     </div>
   );
