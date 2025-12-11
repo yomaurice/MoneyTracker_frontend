@@ -27,6 +27,17 @@ export default function Signup() {
     }
   };
 
+  useEffect(() => {
+  if (username.length > 2) {
+    fetch(`${API_BASE_URL}/api/check_username?username=${username}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.available) setErrorMsg("Username already taken");
+        else setErrorMsg("");
+      });
+  }
+}, [username]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-100 to-green-300 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
