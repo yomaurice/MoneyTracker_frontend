@@ -33,6 +33,25 @@ export default function Home() {
   checkAuth();
 }, []);
 
+    const [user, setUser] = useState<{ username: string } | null>(null);
+
+    useEffect(() => {
+      const loadUser = async () => {
+        try {
+          const res = await authFetch(`${API_BASE_URL}/api/me`);
+
+          if (res.ok) {
+            const data = await res.json();
+            setUser({ username: data.username });
+          }
+        } catch (err) {
+          console.error("Failed to fetch /api/me:", err);
+        }
+      };
+
+  loadUser();
+}, []);
+
 
   const handleTransactionAdded = () => {
     setRefreshAnalytics((prev) => prev + 1)
@@ -60,8 +79,8 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
           Money Tracker
         </h1>
-        <div className="flex justify-end mb-4">
-                <select
+        div className="flex items-center gap-4">
+        <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
                   className="flex right p-1 border rounded"
@@ -71,10 +90,18 @@ export default function Home() {
                   <option value="GBP">GBP £</option>
                   <option value="ILS">ILS ₪</option>
                 </select>
-                <button
-                    onClick={logout}
-                    className="flex right bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-                >Logout</button>
+          {user && (
+            <span className="text-gray-700 font-medium">
+              👋 Hello, <strong>{user.username}</strong>
+            </span>
+          )}
+
+          <button
+            onClick={handleLogout}
+            className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
+          >
+            Logout
+          </button>
         </div>
         <div className="flex justify-center mb-8">
           <div className="bg-white rounded-lg shadow-md p-1">
