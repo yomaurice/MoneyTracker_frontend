@@ -87,6 +87,14 @@ export default function Home() {
             </span>
           )}
 
+          {/* Logout */}
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
+          >
+            Logout
+          </button>
+
           {/* Currency Picker */}
           <select
             value={currency}
@@ -98,14 +106,6 @@ export default function Home() {
             <option value="GBP">GBP £</option>
             <option value="ILS">ILS ₪</option>
           </select>
-
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-          >
-            Logout
-          </button>
         </div>
 
         {/* ------------------ TAB BUTTONS ------------------ */}
