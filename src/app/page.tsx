@@ -79,30 +79,32 @@ export default function Home() {
         <h1 className="text-3xl font-bold text-center mb-8 text-gray-800">
           Money Tracker
         </h1>
-        div className="flex items-center gap-4">
-        <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="flex right p-1 border rounded"
-                >
-                  <option value="USD">USD $</option>
-                  <option value="EUR">EUR €</option>
-                  <option value="GBP">GBP £</option>
-                  <option value="ILS">ILS ₪</option>
-                </select>
-          {user && (
-            <span className="text-gray-700 font-medium">
-              👋 Hello, <strong>{user.username}</strong>
+        <div className="flex justify-end items-center gap-3 mb-4">
+          {username && (
+            <span className="text-sm text-gray-700">
+              Hello,&nbsp;<span className="font-semibold">{username}</span>
             </span>
           )}
 
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            className="p-1 border rounded"
+          >
+            <option value="USD">USD $</option>
+            <option value="EUR">EUR €</option>
+            <option value="GBP">GBP £</option>
+            <option value="ILS">ILS ₪</option>
+          </select>
+
           <button
-            onClick={handleLogout}
-            className="px-3 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600"
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
           >
             Logout
           </button>
         </div>
+
         <div className="flex justify-center mb-8">
           <div className="bg-white rounded-lg shadow-md p-1">
             <button
