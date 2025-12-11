@@ -1,15 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';   // ✅ FIX: added useEffect
 import { useRouter } from 'next/navigation';
 
 export default function Signup() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const router = useRouter();
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
 
+  const router = useRouter();
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+
+  // --------------------------------------------------------
+  // ✅ Live username availability check
+  // --------------------------------------------------------
+  useEffect(() => {
+    if (username.length < 3) {
+      setUsernameAvailable(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    fetch(`${API_BASE_URL}/api/check_username?username=${username}`, {
+      signal: controller.signal,
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        setUsernameAvailable(data.available);
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [username, API_BASE_URL]);
+
+  // --------------------------------------------------------
+  // ✅ Signup submit
+  // --------------------------------------------------------
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -27,22 +55,15 @@ export default function Signup() {
     }
   };
 
-  useEffect(() => {
-  if (username.length > 2) {
-    fetch(`${API_BASE_URL}/api/check_username?username=${username}`)
-      .then(r => r.json())
-      .then(data => {
-        if (!data.available) setErrorMsg("Username already taken");
-        else setErrorMsg("");
-      });
-  }
-}, [username]);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-100 to-green-300 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-green-700 mb-6">Create Account</h1>
+        <h1 className="text-3xl font-bold text-center text-green-700 mb-6">
+          Create Account
+        </h1>
+
         <form onSubmit={handleSignup} className="space-y-4">
+          {/* Username */}
           <div>
             <label className="block text-gray-700">Username</label>
             <input
@@ -52,7 +73,20 @@ export default function Signup() {
               onChange={(e) => setUsername(e.target.value)}
               required
             />
+            {/* Username availability indicator */}
+            {username.length >= 3 && usernameAvailable === false && (
+              <p className="text-xs text-red-500 mt-1">
+                Username already taken
+              </p>
+            )}
+            {username.length >= 3 && usernameAvailable === true && (
+              <p className="text-xs text-green-600 mt-1">
+                Username is available ✔️
+              </p>
+            )}
           </div>
+
+          {/* Password */}
           <div>
             <label className="block text-gray-700">Password</label>
             <input
@@ -63,16 +97,21 @@ export default function Signup() {
               required
             />
           </div>
+
+          {/* Error message (from backend only) */}
           {errorMsg && (
             <p className="text-red-500 text-sm text-center">{errorMsg}</p>
           )}
+
           <button
             type="submit"
             className="w-full bg-green-600 text-white py-2 rounded-xl hover:bg-green-700 transition-colors"
+            disabled={usernameAvailable === false}   // 🚫 block submit when taken
           >
             Sign Up
           </button>
         </form>
+
         <p className="mt-4 text-sm text-center text-gray-600">
           Already have an account?{' '}
           <a href="/login" className="text-green-600 hover:underline">
