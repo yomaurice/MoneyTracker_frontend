@@ -129,13 +129,22 @@ export default function Login() {
       </form>
 
       <p className="mt-4 text-sm text-center text-gray-600">
-        Don&apos;t have an account?{' '}
+        Don&apos;t have an account?{" "}
         <a href="/signup" className="text-blue-600 hover:underline">
           Sign up here
+        </a>
+      </p>
+
+      {/* ✅ NEW: Forgot password link */}
+      <p className="mt-2 text-sm text-center text-gray-600">
+        Forgot your password?{" "}
+        <a href="/forgot-password" className="text-blue-600 hover:underline">
+          Reset it here
         </a>
       </p>
     </div>
   </div>
 );
+
 }
 
