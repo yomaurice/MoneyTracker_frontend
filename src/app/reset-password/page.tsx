@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
+  const router = useRouter();
 
   const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
@@ -26,6 +27,11 @@ export default function ResetPasswordPage() {
 
     const data = await res.json();
     setMsg(data.message);
+
+    if (res.ok) {
+      setTimeout(() => router.push('/login'), 2000);
+    }
+
     setLoading(false);
   };
 
@@ -56,12 +62,19 @@ export default function ResetPasswordPage() {
           />
 
           <button
-            className="w-full bg-blue-600 text-white p-2 rounded"
+            className="w-full bg-blue-600 text-white p-2 rounded disabled:opacity-50"
             disabled={loading}
           >
             {loading ? "Saving..." : "Set New Password"}
           </button>
         </form>
+
+        <button
+          onClick={() => router.push('/login')}
+          className="mt-4 w-full bg-gray-300 text-black p-2 rounded"
+        >
+          Back to Login
+        </button>
 
         {msg && <p className="mt-3 text-center text-gray-700">{msg}</p>}
       </div>
