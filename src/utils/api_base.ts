@@ -9,12 +9,12 @@ export function getApiBaseUrl() {
 
   if (host.includes("trackex.store")) {
     console.log("[api_base] Using backend for trackex.store");
-    return "https://money-tracker-backend.onrender.com";
+    return "https://moneytrackerfl.onrender.com";
   }
 
   if (host.includes("vercel.app")) {
     console.log("[api_base] Using backend for vercel");
-    return "https://money-tracker-backend.onrender.com";
+    return "https://moneytrackerfl.onrender.com";
   }
 
   console.log("[api_base] Localhost fallback");
