@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { API_BASE_URL } from "../utils/api_base";
+import { API_BASE_URL } from "@/utils/api_base";
 
 
 export default function ResetPasswordPage() {

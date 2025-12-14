@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { API_BASE_URL } from "../utils/api_base";
+import { API_BASE_URL } from "@/utils/api_base";
 
 
 export default function ForgotPassword() {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';   // ✅ FIX: added useEffect
 import { useRouter } from 'next/navigation';
-import { API_BASE_URL } from "../utils/api_base";
+import { API_BASE_URL } from "@/utils/api_base";
 
 
 export default function Signup() {

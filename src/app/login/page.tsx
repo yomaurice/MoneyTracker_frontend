@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { waitForBackend } from '../../utils/backendStatus';
-import { API_BASE_URL } from "../utils/api_base";
+import { API_BASE_URL } from "@/utils/api_base";
 
 
 
