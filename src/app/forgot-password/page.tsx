@@ -16,7 +16,7 @@ export default function ForgotPassword() {
     setLoading(true);
     setMsg("Checking user...");
 
-    const res = await fetch(`${API}/api/request_password_reset`, {
+    const res = await fetch(`${API_BASE_URL}/api/request_password_reset`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username }),
