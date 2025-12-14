@@ -1,26 +1,22 @@
-// utils/api_base.ts
-
 export function getApiBaseUrl() {
-  // SSR fallback (Next.js renders on server side first)
   if (typeof window === "undefined") {
+    console.log("[api_base] SSR mode. Using:", process.env.NEXT_PUBLIC_BACKEND_URL);
     return process.env.NEXT_PUBLIC_BACKEND_URL;
   }
 
   const host = window.location.hostname;
+  console.log("[api_base] Running in browser:", host);
 
-  // Custom domain
   if (host.includes("trackex.store")) {
+    console.log("[api_base] Using backend for trackex.store");
     return "https://money-tracker-backend.onrender.com";
   }
 
-  // Vercel production domain
   if (host.includes("vercel.app")) {
+    console.log("[api_base] Using backend for vercel");
     return "https://money-tracker-backend.onrender.com";
   }
 
-  // Local development
+  console.log("[api_base] Localhost fallback");
   return "http://localhost:5000";
 }
-
-// A simple constant (commonly used)
-export const API_BASE_URL = getApiBaseUrl();
