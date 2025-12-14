@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { waitForBackend } from '../../utils/backendStatus';
+import { API_BASE_URL } from "../utils/api_base";
+
 
 
 export default function Login() {
@@ -13,7 +15,6 @@ export default function Login() {
 
   const router = useRouter();
 
- const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
  const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
   setErrorMsg('');

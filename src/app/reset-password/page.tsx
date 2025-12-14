@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { API_BASE_URL } from "../utils/api_base";
+
 
 export default function ResetPasswordPage() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const router = useRouter();
 
-  const API = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const [password, setPassword] = useState('');
   const [msg, setMsg] = useState('');

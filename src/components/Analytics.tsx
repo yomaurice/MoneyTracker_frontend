@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { authFetch } from '../utils/auth_fetch';
+import { API_BASE_URL } from "../utils/api_base";
 import { useCurrency } from '../context/CurrencyContext';
 import {
   BarChart,
@@ -14,7 +15,6 @@ import {
   ReferenceLine,
 } from 'recharts';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 const monthOptions = [
   { value: '01', label: 'January' },

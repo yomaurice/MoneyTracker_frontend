@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';   // ✅ FIX: added useEffect
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from "../utils/api_base";
+
 
 export default function Signup() {
   const [username, setUsername] = useState('');
@@ -12,7 +14,6 @@ export default function Signup() {
 
 
   const router = useRouter();
-  const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   // --------------------------------------------------------
   // ✅ Live username availability check

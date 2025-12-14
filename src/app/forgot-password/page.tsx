@@ -1,13 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from "../utils/api_base";
+
 
 export default function ForgotPassword() {
   const [username, setUsername] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const API = process.env.NEXT_PUBLIC_BACKEND_URL;
   const router = useRouter();
 
   const submit = async (e: any) => {

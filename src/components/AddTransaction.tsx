@@ -1,10 +1,10 @@
 'use client';
 
 import { authFetch } from '../utils/auth_fetch'
+import { API_BASE_URL } from "../utils/api_base";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
 
 export default function AddTransaction({ onTransactionAdded, transactionToEdit }: { onTransactionAdded: any, transactionToEdit?: any }) {
 

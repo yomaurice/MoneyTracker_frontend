@@ -6,9 +6,9 @@ import AddTransaction from '../components/AddTransaction'
 import Analytics from '../components/Analytics'
 import { logout as performLogout } from '../utils/logout';   // 👈 rename import
 import { authFetch } from '../utils/auth_fetch';
+import { API_BASE_URL } from "../utils/api_base";
 import { useCurrency } from '../context/CurrencyContext';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
 export default function Home() {
   const router = useRouter()
