@@ -6,7 +6,7 @@ import AddTransaction from '../components/AddTransaction'
 import Analytics from '../components/Analytics'
 import { logout as performLogout } from '../utils/logout';   // 👈 rename import
 import { authFetch } from '../utils/auth_fetch';
-import { API_BASE_URL } from "../utils/api_base";
+import { API_BASE_URL } from "@/utils/api_base";
 import { useCurrency } from '../context/CurrencyContext';
 
 
