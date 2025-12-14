@@ -20,3 +20,7 @@ export function getApiBaseUrl() {
   console.log("[api_base] Localhost fallback");
   return "http://localhost:5000";
 }
+
+
+// A simple constant (commonly used)
+export const API_BASE_URL = getApiBaseUrl();
