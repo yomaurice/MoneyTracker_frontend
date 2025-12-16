@@ -26,13 +26,10 @@ export default function RootLayout({
             <Image
               src="/logo.png"
               alt="Money Tracker Logo"
-              width={40}
-              height={40}
+              width={200}
+              height={200}
               priority
             />
-            <span className="text-xl font-semibold text-gray-800">
-              Money Tracker
-            </span>
           </header>
 
           {/* Page Content */}
