@@ -5,7 +5,8 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CurrencyProvider, useCurrency } from '../context/CurrencyContext';
 import { usePathname, useRouter } from 'next/navigation';
-
+import { authFetch } from '../utils/auth_fetch';
+import { API_BASE_URL } from '../utils/api_base';
 
 
 export default function ClientLayout({
