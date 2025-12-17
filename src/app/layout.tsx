@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import ClientLayout from './ClientLayout';
+import { CurrencyProvider } from '../context/CurrencyContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,7 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <ClientLayout>{children}</ClientLayout>
+        <CurrencyProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </CurrencyProvider>
       </body>
     </html>
   );

@@ -35,12 +35,21 @@ export default function ClientLayout({
   }, []);
 
   return (
-    <CurrencyProvider>
+    <>
       {/* Header */}
       <header className="border-b bg-white dark:bg-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="Money Tracker Logo" width={44} height={44} />
+            <div className="relative w-44 h-12">
+              <Image
+                src="/logo.png"
+                alt="Money Tracker Logo"
+                fill
+                className="object-contain scale-125"
+                priority
+              />
+            </div>
+
             <span className="text-xl font-bold text-gray-800 dark:text-gray-100">
               Money Tracker
             </span>
@@ -114,6 +123,6 @@ export default function ClientLayout({
           </div>
         </div>
       )}
-    </CurrencyProvider>
+    </>
   );
 }
