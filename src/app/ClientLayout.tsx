@@ -7,6 +7,8 @@ import { CurrencyProvider, useCurrency } from '../context/CurrencyContext';
 import { usePathname, useRouter } from 'next/navigation';
 import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
+import { logout } from '../utils/logout';
+
 
 
 export default function ClientLayout({
@@ -30,13 +32,7 @@ export default function ClientLayout({
     const [user, setUser] = useState<{ username: string } | null>(null);
 
     const handleLogout = async () => {
-  try {
-    await authFetch(`${API_BASE_URL}/api/logout`, {
-      method: 'POST',
-    });
-  } finally {
-    router.push('/login');
-  }
+  await logout();
 };
 
   // Apply theme

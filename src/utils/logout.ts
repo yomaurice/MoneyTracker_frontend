@@ -1,10 +1,20 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+import { API_BASE_URL } from './api_base';
 
 export const logout = async () => {
-  await fetch(`${API_BASE_URL}/api/logout`, {
-    method: 'POST',
-    credentials: 'include',
-  });
+  try {
+    await fetch(`${API_BASE_URL}/api/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (err) {
+    console.error('Logout request failed', err);
+  } finally {
+    // Clear any auth settling flags
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('authSettling');
+    }
 
-  window.location.href = '/login';
+    // Force navigation to login
+    window.location.href = '/login';
+  }
 };
