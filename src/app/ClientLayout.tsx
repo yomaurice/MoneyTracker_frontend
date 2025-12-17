@@ -3,13 +3,8 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CurrencyProvider, useCurrency } from '../context/CurrencyContext';
-import { usePathname, useRouter } from 'next/navigation';
-import { authFetch } from '../utils/auth_fetch';
-import { API_BASE_URL } from '../utils/api_base';
-import { logout } from '../utils/logout';
-
-
+import { useCurrency } from '../context/CurrencyContext';
+import { usePathname } from 'next/navigation';
 
 export default function ClientLayout({
   children,
@@ -21,21 +16,14 @@ export default function ClientLayout({
 
   const { currency, setCurrency } = useCurrency();
   const pathname = usePathname();
-    const router = useRouter();
 
-    const isAuthPage =
-      pathname.startsWith('/login') ||
-      pathname.startsWith('/signup') ||
-      pathname.startsWith('/forgot') ||
-      pathname.startsWith('/reset');
+  const isAuthPage =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/signup') ||
+    pathname.startsWith('/forgot') ||
+    pathname.startsWith('/reset');
 
-    const [user, setUser] = useState<{ username: string } | null>(null);
-
-    const handleLogout = async () => {
-  await logout();
-};
-
-  // Apply theme
+  // ---------------- THEME HANDLING ----------------
   useEffect(() => {
     const root = document.documentElement;
 
@@ -56,51 +44,37 @@ export default function ClientLayout({
 
   return (
     <>
-      {/* Header */}
+      {/* ---------------- HEADER ---------------- */}
       <header className="border-b bg-white dark:bg-gray-800">
-  <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          {/* Logo (always visible) */}
+          <div className="relative w-44 h-12">
+            <Image
+              src="/logo.png"
+              alt="Money Tracker Logo"
+              fill
+              priority
+              className="object-contain scale-125"
+            />
+          </div>
 
-    {/* LEFT — Logo (always visible) */}
-    <div className="flex items-center gap-3">
-      <div className="relative w-44 h-12">
-        <Image
-          src="/logo.png"
-          alt="Money Tracker Logo"
-          fill
-          className="object-contain scale-125"
-          priority
-        />
-      </div>
-    </div>
+          {/* Settings (hidden on auth pages) */}
+          {!isAuthPage && (
+            <button
+              onClick={() => setShowSettings(true)}
+              className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
+            >
+              ⚙ Settings
+            </button>
+          )}
+        </div>
+      </header>
 
-    {/* RIGHT — User + actions (hidden on auth pages) */}
-    {!isAuthPage && (
-      <div className="flex items-center gap-4">
-        {}
-
-        <button
-          onClick={handleLogout}
-          className="text-sm px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200"
-        >
-          Logout
-        </button>
-
-        <button
-          onClick={() => setShowSettings(true)}
-          className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
-        >
-          ⚙ Settings
-        </button>
-      </div>
-    )}
-  </div>
-</header>
-
-      {/* Page transitions */}
+      {/* ---------------- PAGE TRANSITIONS ---------------- */}
       <main className="py-10">
         <AnimatePresence mode="wait">
           <motion.div
-            key={typeof window !== 'undefined' ? location.pathname : 'page'}
+            key={pathname}
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -111,7 +85,7 @@ export default function ClientLayout({
         </AnimatePresence>
       </main>
 
-      {/* Settings modal */}
+      {/* ---------------- SETTINGS MODAL ---------------- */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-sm">
