@@ -38,14 +38,20 @@ export const authFetch = async (
 
     const isAuthCheck = url.endsWith('/api/me');
 
-    if (
-      !skipRedirect &&
-      isAuthCheck &&
-      typeof window !== 'undefined'
-    ) {
-      console.error('[authFetch] redirecting to /login');
-      window.location.href = '/login';
-    }
+const isAuthSettling =
+  typeof window !== 'undefined' &&
+  sessionStorage.getItem('authSettling') === 'true';
+
+if (
+  !skipRedirect &&
+  isAuthCheck &&
+  !isAuthSettling &&
+  typeof window !== 'undefined'
+) {
+  console.error('[authFetch] redirecting to /login');
+  window.location.href = '/login';
+}
+
   }
 
   return res;
