@@ -80,12 +80,7 @@ export default function ClientLayout({
     {/* RIGHT — User + actions (hidden on auth pages) */}
     {!isAuthPage && (
       <div className="flex items-center gap-4">
-        {user?.username && (
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            Hello,&nbsp;
-            <span className="font-semibold">{user.username}</span>
-          </span>
-        )}
+        {}
 
         <button
           onClick={handleLogout}
