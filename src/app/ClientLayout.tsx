@@ -4,6 +4,10 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CurrencyProvider, useCurrency } from '../context/CurrencyContext';
+import { usePathname, useRouter } from 'next/navigation';
+import { authFetch } from '../utils/auth_fetch';
+import { API_BASE_URL } from '../utils/api_base';
+
 
 export default function ClientLayout({
   children,
@@ -14,6 +18,26 @@ export default function ClientLayout({
   const [showSettings, setShowSettings] = useState(false);
 
   const { currency, setCurrency } = useCurrency();
+  const pathname = usePathname();
+    const router = useRouter();
+
+    const isAuthPage =
+      pathname.startsWith('/login') ||
+      pathname.startsWith('/signup') ||
+      pathname.startsWith('/forgot') ||
+      pathname.startsWith('/reset');
+
+    const [user, setUser] = useState<{ username: string } | null>(null);
+
+    const handleLogout = async () => {
+  try {
+    await authFetch(`${API_BASE_URL}/api/logout`, {
+      method: 'POST',
+    });
+  } finally {
+    router.push('/login');
+  }
+};
 
   // Apply theme
   useEffect(() => {
@@ -34,35 +58,71 @@ export default function ClientLayout({
     if (saved) setTheme(saved);
   }, []);
 
+  useEffect(() => {
+  if (isAuthPage) return;
+
+  const loadUser = async () => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/me`);
+      if (res.ok) {
+        const data = await res.json();
+        setUser({ username: data.username });
+      }
+    } catch (err) {
+      console.error('Failed to load user', err);
+    }
+  };
+
+  loadUser();
+}, [isAuthPage]);
+
+
   return (
     <>
       {/* Header */}
       <header className="border-b bg-white dark:bg-gray-800">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-44 h-12">
-              <Image
-                src="/logo.png"
-                alt="Money Tracker Logo"
-                fill
-                className="object-contain scale-125"
-                priority
-              />
-            </div>
+  <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
 
-            <span className="text-xl font-bold text-gray-800 dark:text-gray-100">
-              Money Tracker
-            </span>
-          </div>
+    {/* LEFT — Logo (always visible) */}
+    <div className="flex items-center gap-3">
+      <div className="relative w-44 h-12">
+        <Image
+          src="/logo.png"
+          alt="Money Tracker Logo"
+          fill
+          className="object-contain scale-125"
+          priority
+        />
+      </div>
+    </div>
 
-          <button
-            onClick={() => setShowSettings(true)}
-            className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
-          >
-            ⚙ Settings
-          </button>
-        </div>
-      </header>
+    {/* RIGHT — User + actions (hidden on auth pages) */}
+    {!isAuthPage && (
+      <div className="flex items-center gap-4">
+        {user?.username && (
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            Hello,&nbsp;
+            <span className="font-semibold">{user.username}</span>
+          </span>
+        )}
+
+        <button
+          onClick={handleLogout}
+          className="text-sm px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200"
+        >
+          Logout
+        </button>
+
+        <button
+          onClick={() => setShowSettings(true)}
+          className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
+        >
+          ⚙ Settings
+        </button>
+      </div>
+    )}
+  </div>
+</header>
 
       {/* Page transitions */}
       <main className="py-10">
