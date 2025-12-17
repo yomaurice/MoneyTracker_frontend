@@ -5,8 +5,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CurrencyProvider, useCurrency } from '../context/CurrencyContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { authFetch } from '../utils/auth_fetch';
-import { API_BASE_URL } from '../utils/api_base';
+
 
 
 export default function ClientLayout({
@@ -57,29 +56,6 @@ export default function ClientLayout({
     const saved = localStorage.getItem('theme') as any;
     if (saved) setTheme(saved);
   }, []);
-
-  useEffect(() => {
-  if (isAuthPage) return;
-
-  const loadUser = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/me`, {
-        credentials: 'include',
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setUser({ username: data.username });
-      }
-    } catch (err) {
-      console.error('Failed to load user', err);
-    }
-  };
-
-  loadUser();
-}, [isAuthPage]);
-
-
 
   return (
     <>
