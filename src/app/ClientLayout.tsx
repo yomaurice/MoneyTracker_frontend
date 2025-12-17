@@ -63,7 +63,10 @@ export default function ClientLayout({
 
   const loadUser = async () => {
     try {
-      const res = await authFetch(`${API_BASE_URL}/api/me`);
+      const res = await fetch(`${API_BASE_URL}/api/me`, {
+        credentials: 'include',
+      });
+
       if (res.ok) {
         const data = await res.json();
         setUser({ username: data.username });
@@ -75,6 +78,7 @@ export default function ClientLayout({
 
   loadUser();
 }, [isAuthPage]);
+
 
 
   return (
