@@ -5,25 +5,33 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '../context/CurrencyContext';
 import { usePathname } from 'next/navigation';
+import { authFetch } from '../utils/auth_fetch';
+import { API_BASE_URL } from '../utils/api_base';
+import { logout } from '../utils/logout';
 
 export default function ClientLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
-  const [showSettings, setShowSettings] = useState(false);
-
-  const { currency, setCurrency } = useCurrency();
   const pathname = usePathname();
 
   const isAuthPage =
     pathname.startsWith('/login') ||
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot') ||
-    pathname.startsWith('/reset');
+    pathname.startsWith('/reset') ||
+    pathname.startsWith('/forgot-password'); // you use this route
 
-  // ---------------- THEME HANDLING ----------------
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [showSettings, setShowSettings] = useState(false);
+
+  const { currency, setCurrency } = useCurrency();
+
+  // ✅ user shown in header
+  const [user, setUser] = useState<{ username: string } | null>(null);
+
+  // ---------------- THEME ----------------
   useEffect(() => {
     const root = document.documentElement;
 
@@ -42,12 +50,42 @@ export default function ClientLayout({
     if (saved) setTheme(saved);
   }, []);
 
+  // ---------------- LOAD USER (SAFE) ----------------
+  useEffect(() => {
+    if (isAuthPage) {
+      setUser(null);
+      return;
+    }
+
+    const loadUser = async () => {
+      try {
+        // ✅ skipRedirect=true so ClientLayout NEVER forces /login
+        const res = await authFetch(`${API_BASE_URL}/api/me`, {}, true);
+        if (res.ok) {
+          const data = await res.json();
+          setUser({ username: data.username });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Header /api/me failed:', err);
+        setUser(null);
+      }
+    };
+
+    loadUser();
+  }, [isAuthPage, pathname]);
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
   return (
     <>
       {/* ---------------- HEADER ---------------- */}
       <header className="border-b bg-white dark:bg-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          {/* Logo (always visible) */}
+          {/* LEFT — Logo (always visible) */}
           <div className="relative w-44 h-12">
             <Image
               src="/logo.png"
@@ -58,14 +96,29 @@ export default function ClientLayout({
             />
           </div>
 
-          {/* Settings (hidden on auth pages) */}
+          {/* RIGHT — Actions (hidden on auth pages) */}
           {!isAuthPage && (
-            <button
-              onClick={() => setShowSettings(true)}
-              className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
-            >
-              ⚙ Settings
-            </button>
+            <div className="flex items-center gap-4">
+              {user?.username && (
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  Hello,&nbsp;<span className="font-semibold">{user.username}</span>
+                </span>
+              )}
+
+              <button
+                onClick={handleLogout}
+                className="text-sm px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200"
+              >
+                Logout
+              </button>
+
+              <button
+                onClick={() => setShowSettings(true)}
+                className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
+              >
+                ⚙ Settings
+              </button>
+            </div>
           )}
         </div>
       </header>
