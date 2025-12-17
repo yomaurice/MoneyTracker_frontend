@@ -25,3 +25,11 @@ body {
     )
     rgb(var(--background-start-rgb));
 }
+
+:root {
+  --chart-grid: #e5e7eb;
+}
+
+.dark {
+  --chart-grid: #374151;
+}

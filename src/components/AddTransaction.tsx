@@ -220,11 +220,11 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+     <h2 className="text-2xl font-bold mb-8 text-gray-800 dark:text-gray-100 text-center">
         {id ? 'Edit Transaction' : 'Add New Transaction'}
       </h2>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
 
         {/* Type */}
         <div>
@@ -265,7 +265,9 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
               name="category"
               value={formData.category}
               onChange={handleInputChange}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                            bg-white dark:bg-gray-700
+                            text-gray-800 dark:text-gray-100"
               required
             >
               <option value="">Select a category</option>
@@ -395,8 +397,8 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
         <button
           type="submit"
           disabled={loading}
-          className={`w-full py-3 px-4 rounded-md font-medium text-white transition-colors ${
-            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600'
+          className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all ${
+            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'
           }`}
         >
           {loading ? 'Saving...' : id ? 'Update Transaction' : 'Add Transaction'}
@@ -404,7 +406,7 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
 
         {message && (
           <div
-            className={`p-3 rounded-md text-center ${
+  className={`p-4 rounded-lg text-center font-medium ${
               isSuccess ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}
           >

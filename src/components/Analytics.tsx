@@ -15,6 +15,28 @@ import {
   ReferenceLine,
 } from 'recharts';
 
+type EmptyStateProps = {
+  title: string;
+  description: string;
+};
+
+function EmptyState({ title, description }: EmptyStateProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+    <img
+      src="/empty-analytics.svg"
+      alt=""
+      className="w-56 h-auto mb-6 opacity-80"
+    />
+      <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200">
+        {title}
+      </h3>
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+        {description}
+      </p>
+    </div>
+  );
+}
 
 const monthOptions = [
   { value: '01', label: 'January' },
@@ -66,6 +88,7 @@ interface AnalyticsResponse {
     }[];
   };
 }
+
 
 export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const [rawAnalytics, setRawAnalytics] = useState<AnalyticsResponse | null>(
@@ -804,10 +827,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             {/* List */}
             <div className="overflow-y-auto flex-1">
               {activeList.length === 0 ? (
-                <div className="text-sm text-gray-500">
-                  No {listType === 'expense' ? 'expenses' : 'income'} to show.
-                </div>
-              ) : (
+                  <EmptyState
+                    title={`No ${listType === 'expense' ? 'expenses' : 'income'} found`}
+                    description="Try changing filters or add a new transaction."
+                  />
+                    ) : (
                 activeList.map((tx: any) => (
                   <div
                     key={tx.id}
@@ -937,9 +961,10 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
               </h3>
 
               {expenseChartData.length === 0 ? (
-                  <div className="text-center text-gray-500">
-                    No data to draw expenses chart.
-                  </div>
+                  <EmptyState
+                  title="No expenses to show"
+                  description="Try selecting a different period or add some expenses to see analytics here."
+                />
                 ) : (
                   <>
                     {avgExpense > 0 && (
@@ -953,7 +978,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         data={expenseChartData}
                         margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="var(--chart-grid)"
+                        />
+
                         <XAxis
                           dataKey={
                             isYearly
@@ -967,8 +996,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                             !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
                           }
                           height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
+                          tick={{ fill: 'var(--chart-axis)' }}
                         />
-                        <YAxis />
+
+                        <YAxis tick={{ fill: 'var(--chart-axis)' }} />
+
                         <Tooltip
                           formatter={(value) =>
                             formatCurrency(Number(value ?? 0), currency)
@@ -1031,9 +1063,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
               </h3>
 
                 {incomeChartData.length === 0 ? (
-                  <div className="text-center text-gray-500">
-                    No data to draw income chart.
-                  </div>
+                  <EmptyState
+                      title="No income to show"
+                      description="Income analytics will appear once income transactions exist for this period."
+                    />
+
                 ) : (
                   <>
                     {avgIncome > 0 && (
@@ -1047,22 +1081,29 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         data={incomeChartData}
                         margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey={
-                            isYearly
-                              ? 'monthLabel'
-                              : isMonthAcrossYears
-                              ? 'yearLabel'
-                              : 'category'
-                          }
-                          angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
-                          textAnchor={
-                            !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
-                          }
-                          height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
-                        />
-                        <YAxis />
+                        <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--chart-grid)"
+                    />
+
+                    <XAxis
+                      dataKey={
+                        isYearly
+                          ? 'monthLabel'
+                          : isMonthAcrossYears
+                          ? 'yearLabel'
+                          : 'category'
+                      }
+                      angle={!isYearly && !isMonthAcrossYears ? -30 : 0}
+                      textAnchor={
+                        !isYearly && !isMonthAcrossYears ? 'end' : 'middle'
+                      }
+                      height={!isYearly && !isMonthAcrossYears ? 70 : undefined}
+                      tick={{ fill: 'var(--chart-axis)' }}
+                    />
+
+                    <YAxis tick={{ fill: 'var(--chart-axis)' }} />
+
                         <Tooltip
                           formatter={(value) =>
                             formatCurrency(Number(value ?? 0), currency)
