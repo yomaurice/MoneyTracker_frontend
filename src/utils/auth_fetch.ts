@@ -36,22 +36,24 @@ export const authFetch = async (
 
     console.error('[authFetch] refresh FAILED');
 
+    // 🔕 TEMPORARILY DISABLED REDIRECTS (IMPORTANT)
+    /*
     const isAuthCheck = url.endsWith('/api/me');
 
-const isAuthSettling =
-  typeof window !== 'undefined' &&
-  sessionStorage.getItem('authSettling') === 'true';
+    const isAuthSettling =
+      typeof window !== 'undefined' &&
+      sessionStorage.getItem('authSettling') === 'true';
 
-if (
-  !skipRedirect &&
-  isAuthCheck &&
-  !isAuthSettling &&
-  typeof window !== 'undefined'
-) {
-  console.error('[authFetch] redirecting to /login');
-  window.location.href = '/login';
-}
-
+    if (
+      !skipRedirect &&
+      isAuthCheck &&
+      !isAuthSettling &&
+      typeof window !== 'undefined'
+    ) {
+      console.error('[authFetch] redirecting to /login');
+      window.location.href = '/login';
+    }
+    */
   }
 
   return res;
