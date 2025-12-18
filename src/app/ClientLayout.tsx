@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '../context/CurrencyContext';
 import { usePathname } from 'next/navigation';
-import { authFetch } from '../utils/authFetch';
+import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
 import { logout } from '../utils/logout';
 
