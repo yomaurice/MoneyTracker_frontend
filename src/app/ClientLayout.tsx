@@ -27,6 +27,10 @@ export default function ClientLayout({
   const [showSettings, setShowSettings] = useState(false);
 
   const { currency, setCurrency } = useCurrency();
+  const isAuthSettling = () =>
+  typeof window !== 'undefined' &&
+  sessionStorage.getItem('authSettling') === 'true';
+
 
   // ✅ user shown in header
   const [user, setUser] = useState<{ username: string } | null>(null);
@@ -51,34 +55,38 @@ export default function ClientLayout({
   }, []);
 
   // ---------------- LOAD USER (SAFE) ----------------
-  useEffect(() => {
-    if (isAuthPage) {
-      setUser(null);
-      return;
-    }
+useEffect(() => {
+  if (isAuthPage) {
+    setUser(null);
+    return;
+  }
 
-    const loadUser = async () => {
-      try {
-        // ✅ skipRedirect=true so ClientLayout NEVER forces /login
-        const res = await authFetch(`${API_BASE_URL}/api/me`, {}, true);
-        if (res.ok) {
-          const data = await res.json();
-          setUser({ username: data.username });
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error('Header /api/me failed:', err);
+  // 🔒 VERY IMPORTANT: wait until login settles
+  if (isAuthSettling()) {
+    const t = setTimeout(() => {
+      sessionStorage.removeItem('authSettling');
+    }, 1200);
+    return () => clearTimeout(t);
+  }
+
+  const loadUser = async () => {
+    try {
+      const res = await authFetch(`${API_BASE_URL}/api/me`, {}, true);
+      if (res.ok) {
+        const data = await res.json();
+        setUser({ username: data.username });
+      } else {
         setUser(null);
       }
-    };
-
-    loadUser();
-  }, [isAuthPage, pathname]);
-
-  const handleLogout = async () => {
-    await logout();
+    } catch (err) {
+      console.error('Header /api/me failed:', err);
+      setUser(null);
+    }
   };
+
+  loadUser();
+}, [isAuthPage, pathname]);
+
 
   return (
     <>
