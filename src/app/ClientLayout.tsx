@@ -27,11 +27,14 @@ export default function ClientLayout({
   const [showSettings, setShowSettings] = useState(false);
 
   const { currency, setCurrency } = useCurrency();
+
   const isAuthSettling = () =>
   typeof window !== 'undefined' &&
   sessionStorage.getItem('authSettling') === 'true';
 
-
+  const handleLogout = async () => {
+    await logout();
+};
   // ✅ user shown in header
   const [user, setUser] = useState<{ username: string } | null>(null);
 
@@ -62,16 +65,15 @@ useEffect(() => {
   }
 
   // 🔒 VERY IMPORTANT: wait until login settles
-  if (isAuthSettling()) {
-    const t = setTimeout(() => {
-      sessionStorage.removeItem('authSettling');
-    }, 1200);
-    return () => clearTimeout(t);
+  useEffect(() => {
+  if (isAuthPage) {
+    setUser(null);
+    return;
   }
 
   const loadUser = async () => {
     try {
-      const res = await authFetch(`${API_BASE_URL}/api/me`, {}, true);
+      const res = await authFetch(`${API_BASE_URL}/api/me`);
       if (res.ok) {
         const data = await res.json();
         setUser({ username: data.username });
@@ -79,13 +81,13 @@ useEffect(() => {
         setUser(null);
       }
     } catch (err) {
-      console.error('Header /api/me failed:', err);
+      console.error('Failed loading user:', err);
       setUser(null);
     }
   };
 
   loadUser();
-}, [isAuthPage, pathname]);
+}, [pathname, isAuthPage]);
 
 
   return (
