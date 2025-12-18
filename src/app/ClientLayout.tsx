@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '../context/CurrencyContext';
 import { usePathname } from 'next/navigation';
-import { authFetch } from '../utils/auth_fetch';
+import { authFetch } from '../utils/authFetch';
 import { API_BASE_URL } from '../utils/api_base';
 import { logout } from '../utils/logout';
 
@@ -32,8 +32,6 @@ export default function ClientLayout({
   const handleLogout = async () => {
     await logout();
   };
-    // ✅ user shown in header
-  const [user, setUser] = useState<{ username: string } | null>(null);
 
   // ---------------- THEME ----------------
   useEffect(() => {
@@ -54,45 +52,36 @@ export default function ClientLayout({
     if (saved) setTheme(saved);
   }, []);
 
-  // ---------------- LOAD USER (SAFE) ----------------
-useEffect(() => {
-  if (isAuthPage) {
-    setUser(null);
-    return;
-  }
-
-  // 🔒 VERY IMPORTANT: wait until login settles
+  // ---------------- LOAD USER ----------------
   useEffect(() => {
-  if (isAuthPage) {
-    setUser(null);
-    return;
-  }
+    if (isAuthPage) {
+      setUser(null);
+      return;
+    }
 
-  const loadUser = async () => {
-    try {
-      const res = await authFetch(`${API_BASE_URL}/api/me`);
-      if (res.ok) {
-        const data = await res.json();
-        setUser({ username: data.username });
-      } else {
+    const loadUser = async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/me`);
+        if (res.ok) {
+          const data = await res.json();
+          setUser({ username: data.username });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Failed loading user:', err);
         setUser(null);
       }
-    } catch (err) {
-      console.error('Failed loading user:', err);
-      setUser(null);
-    }
-  };
+    };
 
-  loadUser();
-}, [pathname, isAuthPage]);
-
+    loadUser();
+  }, [pathname, isAuthPage]);
 
   return (
     <>
       {/* ---------------- HEADER ---------------- */}
       <header className="border-b bg-white dark:bg-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          {/* LEFT — Logo (always visible) */}
           <div className="relative w-44 h-12">
             <Image
               src="/logo.png"
@@ -103,7 +92,6 @@ useEffect(() => {
             />
           </div>
 
-          {/* RIGHT — Actions (hidden on auth pages) */}
           {!isAuthPage && (
             <div className="flex items-center gap-4">
               {user?.username && (
@@ -130,7 +118,6 @@ useEffect(() => {
         </div>
       </header>
 
-      {/* ---------------- PAGE TRANSITIONS ---------------- */}
       <main className="py-10">
         <AnimatePresence mode="wait">
           <motion.div
@@ -145,13 +132,11 @@ useEffect(() => {
         </AnimatePresence>
       </main>
 
-      {/* ---------------- SETTINGS MODAL ---------------- */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 w-full max-w-sm">
             <h2 className="text-lg font-semibold mb-4">Settings</h2>
 
-            {/* Theme */}
             <div className="mb-6">
               <label className="block text-sm mb-2">Theme</label>
               <select
@@ -165,7 +150,6 @@ useEffect(() => {
               </select>
             </div>
 
-            {/* Currency */}
             <div className="mb-6">
               <label className="block text-sm mb-2">Currency</label>
               <select
