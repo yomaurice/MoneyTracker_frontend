@@ -21,21 +21,18 @@ export default function ClientLayout({
     pathname.startsWith('/signup') ||
     pathname.startsWith('/forgot') ||
     pathname.startsWith('/reset') ||
-    pathname.startsWith('/forgot-password'); // you use this route
+    pathname.startsWith('/forgot-password');
 
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [showSettings, setShowSettings] = useState(false);
+  const [user, setUser] = useState<{ username: string } | null>(null);
 
   const { currency, setCurrency } = useCurrency();
 
-  const isAuthSettling = () =>
-  typeof window !== 'undefined' &&
-  sessionStorage.getItem('authSettling') === 'true';
-
   const handleLogout = async () => {
     await logout();
-};
-  // ✅ user shown in header
+  };
+    // ✅ user shown in header
   const [user, setUser] = useState<{ username: string } | null>(null);
 
   // ---------------- THEME ----------------
