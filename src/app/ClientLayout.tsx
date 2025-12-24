@@ -27,7 +27,6 @@ export default function ClientLayout({
 
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [showSettings, setShowSettings] = useState(false);
-  const [user, setUser] = useState<{ username: string } | null>(null);
 
   const { currency, setCurrency } = useCurrency();
 
