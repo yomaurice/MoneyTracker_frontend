@@ -16,7 +16,7 @@ export default function ClientLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const user = useUser();
+  const { user } = useUser();
 
   const isAuthPage =
     pathname.startsWith('/login') ||
