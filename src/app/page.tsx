@@ -1,8 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import AddTransaction from '../components/AddTransaction';
 import Analytics from '../components/Analytics';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { authFetch } from '../utils/auth_fetch';
+import { API_BASE_URL } from '@/utils/api_base';
+import { UserContext } from '../context/UserContext';
+
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'add' | 'analytics'>('add');
@@ -19,7 +24,33 @@ export default function Home() {
     setActiveTab('add');
   };
 
+  const router = useRouter();
+const [user, setUser] = useState<{ username: string } | null>(null);
+
+useEffect(() => {
+  const checkAuth = async () => {
+    const res = await authFetch(`${API_BASE_URL}/api/me`);
+    if (!res.ok) {
+      router.push('/login');
+    }
+  };
+  checkAuth();
+}, []);
+
+useEffect(() => {
+  const loadUser = async () => {
+    const res = await authFetch(`${API_BASE_URL}/api/me`);
+    if (res.ok) {
+      const data = await res.json();
+      setUser({ username: data.username });
+    }
+  };
+  loadUser();
+}, []);
+
+
   return (
+  <UserContext.Provider value={user}>
     <div className="max-w-6xl mx-auto px-4">
       {/* Tabs */}
       <div className="flex justify-center mb-10">
@@ -67,5 +98,6 @@ export default function Home() {
         )}
       </div>
     </div>
+    </UserContext.Provider>
   );
 }

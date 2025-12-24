@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCurrency } from '../context/CurrencyContext';
+import { useUser } from '../context/UserContext';
 import { usePathname } from 'next/navigation';
 import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
@@ -15,6 +16,7 @@ export default function ClientLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const user = useUser();
 
   const isAuthPage =
     pathname.startsWith('/login') ||
@@ -52,30 +54,6 @@ export default function ClientLayout({
     if (saved) setTheme(saved);
   }, []);
 
-  // ---------------- LOAD USER ----------------
-  useEffect(() => {
-    if (isAuthPage) {
-      setUser(null);
-      return;
-    }
-
-    const loadUser = async () => {
-      try {
-        const res = await authFetch(`${API_BASE_URL}/api/me`);
-        if (res.ok) {
-          const data = await res.json();
-          setUser({ username: data.username });
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error('Failed loading user:', err);
-        setUser(null);
-      }
-    };
-
-    loadUser();
-  }, [pathname, isAuthPage]);
 
   useEffect(() => {
   console.log('ClientLayout mounted');
@@ -99,12 +77,12 @@ export default function ClientLayout({
 
           {!isAuthPage && (
             <div className="flex items-center gap-4">
-              {user?.username && (
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  Hello,&nbsp;<span className="font-semibold">{user.username}</span>
-                </span>
-              )}
-
+             {user?.username && (
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                    Hello,&nbsp;
+                    <span className="font-semibold">{user.username}</span>
+                  </span>
+                )}
               <button
                 onClick={handleLogout}
                 className="text-sm px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200"
