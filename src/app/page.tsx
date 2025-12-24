@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '@/utils/api_base';
-import { UserContext } from '../context/UserContext';
+import { useUser  } from '../context/UserContext';
 
 
 export default function Home() {
@@ -25,7 +25,7 @@ export default function Home() {
   };
 
   const router = useRouter();
-const [user, setUser] = useState<{ username: string } | null>(null);
+  const { setUser } = useUser();
 
 useEffect(() => {
   const checkAuth = async () => {
@@ -50,7 +50,6 @@ useEffect(() => {
 
 
   return (
-  <UserContext.Provider value={user}>
     <div className="max-w-6xl mx-auto px-4">
       {/* Tabs */}
       <div className="flex justify-center mb-10">
@@ -98,6 +97,5 @@ useEffect(() => {
         )}
       </div>
     </div>
-    </UserContext.Provider>
   );
 }
