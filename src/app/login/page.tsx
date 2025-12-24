@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { waitForBackend } from '../../utils/backendStatus';
 import { API_BASE_URL } from "@/utils/api_base";
@@ -14,65 +14,48 @@ export default function Login() {
   const [warmingUp, setWarmingUp] = useState(false);
 
   const router = useRouter();
+  const loginInProgress = useRef(false);
+
 
  const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
+
+  if (loginInProgress.current) return; // 🔒 STOP LOOP
+  loginInProgress.current = true;
+
   setErrorMsg('');
   setWarmingUp(true);
 
-  // ✅ wait for backend to REALLY wake up
   const backendReady = await waitForBackend(25000, 2000);
 
   if (!backendReady) {
+    loginInProgress.current = false; // 🔓 unlock on failure
     setWarmingUp(false);
-    setErrorMsg(
-      'Server is taking longer than expected to wake up. Please try again.'
-    );
+    setErrorMsg('Server is taking longer than expected to wake up.');
     return;
   }
 
-  // ✅ once backend is awake, retry login automatically
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/login`, {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // VERY IMPORTANT
+      credentials: 'include',
       body: JSON.stringify({ username, password }),
     });
 
-      if (res.ok) {
-          const data = await res.json();   // ✅ FIX: data declared first
-
-          // ✅ Mark auth as stabilizing
-          sessionStorage.setItem('authSettling', 'true');
-
-          setWarmingUp(false);
-
-          router.push('/');
-          return;
-        }
-
-      // ❗ On first attempt, backend may still stabilizing
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 1500));
-        continue;
-      }
-
-      // ✅ Only AFTER retries show invalid credentials
-      const data = await res.json();
-      setErrorMsg(data.message || 'Invalid credentials');
-      setWarmingUp(false);
+    if (res.ok) {
+      sessionStorage.setItem('authSettling', 'true');
+      router.push('/');
       return;
-    } catch (err) {
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 1500));
-      } else {
-        setErrorMsg('Network error. Please try again.');
-        setWarmingUp(false);
-        return;
-      }
     }
+
+    const data = await res.json();
+    setErrorMsg(data.message || 'Invalid credentials');
+  } catch {
+    setErrorMsg('Network error');
+  } finally {
+    loginInProgress.current = false; // 🔓 unlock
+    setWarmingUp(false);
   }
 };
 
