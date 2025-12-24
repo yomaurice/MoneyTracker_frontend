@@ -77,6 +77,11 @@ export default function ClientLayout({
     loadUser();
   }, [pathname, isAuthPage]);
 
+  useEffect(() => {
+  console.log('ClientLayout mounted');
+}, []);
+
+
   return (
     <>
       {/* ---------------- HEADER ---------------- */}

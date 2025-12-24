@@ -1,6 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Providers } from './providers';
 import ClientLayout from './ClientLayout';
 import { CurrencyProvider } from '../context/CurrencyContext';
 
@@ -19,9 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <CurrencyProvider>
-          <ClientLayout>{children}</ClientLayout>
-        </CurrencyProvider>
+        <Providers>
+          <CurrencyProvider>
+            <ClientLayout>{children}</ClientLayout>
+          </CurrencyProvider>
+        </Providers>
       </body>
     </html>
   );
