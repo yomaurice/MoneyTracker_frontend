@@ -110,6 +110,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [listType, setListType] = useState<'expense' | 'income'>('expense');
+  const [searchTerm, setSearchTerm] = useState('');
   const [presentationMode, setPresentationMode] = useState<'chart' | 'table'>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('defaultAnalyticsView');
@@ -201,7 +202,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   // ---- Reset visible count when filters or mode change ----
   useEffect(() => {
     setVisibleCount(25);
-  }, [viewMode, selectedMonth, selectedYear, selectedYearlyMonth, categoryFilter, listType, presentationMode]);
+  }, [viewMode, selectedMonth, selectedYear, selectedYearlyMonth, categoryFilter, listType, presentationMode, searchTerm]);
 
   // ---- Infinite scroll observer ----
   useEffect(() => {
@@ -598,6 +599,17 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const activeList =
     listType === 'expense' ? expenseList : incomeList;
 
+  const filteredList = searchTerm.trim()
+    ? activeList.filter(tx =>
+        (tx.description || '').toLowerCase().includes(searchTerm.toLowerCase().trim())
+      )
+    : activeList;
+
+  const filteredTotal = filteredList.reduce(
+    (sum, tx) => sum + tx.amount * (tx.exchange_rate || 1),
+    0
+  );
+
   // Averages for charts
   const expenseValueKeys =
     isYearly || isMonthAcrossYears ? expenseCategories : ['expense'];
@@ -617,7 +629,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     }
   };
 
-  const sortedActiveList = [...activeList].sort((a, b) => {
+  const sortedActiveList = [...filteredList].sort((a, b) => {
     let cmp = 0;
     if (sortCol === 'date') cmp = a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
     else if (sortCol === 'category') cmp = a.category.localeCompare(b.category);
@@ -833,6 +845,36 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </select>
           </div>
 
+          {/* Search description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Search Description
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="e.g. groceries..."
+                className="px-3 py-2 pr-8 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {searchTerm.trim() && (
+              <p className="text-xs text-gray-500 mt-1">
+                {filteredList.length} result{filteredList.length !== 1 ? 's' : ''}
+                {filteredList.length > 0 && ` · ${formatCurrency(filteredTotal, currency)}`}
+              </p>
+            )}
+          </div>
+
           {/* Chart / Table toggle */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -907,11 +949,18 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
               </div>
             </div>
 
-            {activeList.length === 0 ? (
-              <EmptyState
-                title={`No ${listType === 'expense' ? 'expenses' : 'income'} found`}
-                description="Try changing filters or add a new transaction."
-              />
+            {filteredList.length === 0 ? (
+              searchTerm.trim() ? (
+                <EmptyState
+                  title="No results"
+                  description={`No transactions match "${searchTerm}".`}
+                />
+              ) : (
+                <EmptyState
+                  title={`No ${listType === 'expense' ? 'expenses' : 'income'} found`}
+                  description="Try changing filters or add a new transaction."
+                />
+              )
             ) : (
               <>
                 <div className="overflow-x-auto">
@@ -1064,13 +1113,20 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
             {/* List */}
             <div className="overflow-y-auto flex-1">
-              {activeList.length === 0 ? (
+              {filteredList.length === 0 ? (
+                searchTerm.trim() ? (
+                  <EmptyState
+                    title="No results"
+                    description={`No transactions match "${searchTerm}".`}
+                  />
+                ) : (
                   <EmptyState
                     title={`No ${listType === 'expense' ? 'expenses' : 'income'} found`}
                     description="Try changing filters or add a new transaction."
                   />
-                    ) : (
-                activeList.map((tx: any) => (
+                )
+              ) : (
+                filteredList.map((tx: any) => (
                   <div
                     key={tx.id}
                     className="border-b border-gray-200 py-2 last:border-none"
