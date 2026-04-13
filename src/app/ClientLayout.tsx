@@ -27,6 +27,7 @@ export default function ClientLayout({
 
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [showSettings, setShowSettings] = useState(false);
+  const [defaultAnalyticsView, setDefaultAnalyticsView] = useState<'chart' | 'table'>('chart');
 
   const { currency, setCurrency } = useCurrency();
 
@@ -51,6 +52,8 @@ export default function ClientLayout({
   useEffect(() => {
     const saved = localStorage.getItem('theme') as any;
     if (saved) setTheme(saved);
+    const savedView = localStorage.getItem('defaultAnalyticsView') as any;
+    if (savedView) setDefaultAnalyticsView(savedView);
   }, []);
 
 
@@ -133,6 +136,22 @@ export default function ClientLayout({
                 <option value="system">System</option>
                 <option value="light">Light</option>
                 <option value="dark">Dark</option>
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm mb-2">Default Analytics View</label>
+              <select
+                value={defaultAnalyticsView}
+                onChange={(e) => {
+                  const v = e.target.value as 'chart' | 'table';
+                  setDefaultAnalyticsView(v);
+                  localStorage.setItem('defaultAnalyticsView', v);
+                }}
+                className="w-full p-2 rounded-lg border"
+              >
+                <option value="chart">Chart</option>
+                <option value="table">Table</option>
               </select>
             </div>
 

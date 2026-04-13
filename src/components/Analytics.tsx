@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from "../utils/api_base";
 import { useCurrency } from '../context/CurrencyContext';
@@ -110,6 +110,17 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [listType, setListType] = useState<'expense' | 'income'>('expense');
+  const [presentationMode, setPresentationMode] = useState<'chart' | 'table'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('defaultAnalyticsView');
+      if (saved === 'table' || saved === 'chart') return saved;
+    }
+    return 'chart';
+  });
+  const [sortCol, setSortCol] = useState<'date' | 'category' | 'amount'>('date');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [visibleCount, setVisibleCount] = useState(25);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
 
@@ -181,6 +192,28 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   fetchAnalytics(true);
     }, []);
 
+
+  // ---- Reset visible count when filters or mode change ----
+  useEffect(() => {
+    setVisibleCount(25);
+  }, [viewMode, selectedMonth, selectedYear, selectedYearlyMonth, categoryFilter, listType, presentationMode]);
+
+  // ---- Infinite scroll observer ----
+  useEffect(() => {
+    if (presentationMode !== 'table') return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 25);
+        }
+      },
+      { rootMargin: '100px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [presentationMode, visibleCount]);
 
   // ---- Categories ----
   useEffect(() => {
@@ -570,6 +603,33 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
   const net = income - expense;
 
+  const handleSort = (col: 'date' | 'category' | 'amount') => {
+    if (sortCol === col) {
+      setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortCol(col);
+      setSortDir(col === 'date' ? 'desc' : 'asc');
+    }
+  };
+
+  const sortedActiveList = [...activeList].sort((a, b) => {
+    let cmp = 0;
+    if (sortCol === 'date') cmp = a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    else if (sortCol === 'category') cmp = a.category.localeCompare(b.category);
+    else if (sortCol === 'amount') cmp = a.amount - b.amount;
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const visibleItems = sortedActiveList.slice(0, visibleCount);
+  const hasMore = visibleCount < sortedActiveList.length;
+
+  const SortIcon = ({ col }: { col: 'date' | 'category' | 'amount' }) =>
+    sortCol !== col ? (
+      <span className="text-gray-300 ml-1">↕</span>
+    ) : (
+      <span className="ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+    );
+
   const handleEdit = (tx: any) => onEdit(tx);
 
   const handleDelete = async (id: any) => {
@@ -767,10 +827,183 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
               ))}
             </select>
           </div>
+
+          {/* Chart / Table toggle */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Display
+            </label>
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => setPresentationMode('chart')}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  presentationMode === 'chart'
+                    ? 'bg-white shadow text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Chart
+              </button>
+              <button
+                onClick={() => setPresentationMode('table')}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  presentationMode === 'table'
+                    ? 'bg-white shadow text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Table
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main grid */}
+      {/* TABLE MODE */}
+      {presentationMode === 'table' && (
+        <div className="flex flex-col gap-6">
+          {/* Summary */}
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <h3 className="text-lg font-medium text-gray-800">{summaryTitle}</h3>
+            <p className="text-xs text-gray-500 mb-4">{summarySubtitle}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-green-50 p-3 rounded-lg">
+                <div className="text-sm text-green-600 font-medium">Income</div>
+                <div className="text-xl font-bold text-green-700">{formatCurrency(income, currency)}</div>
+              </div>
+              <div className="bg-red-50 p-3 rounded-lg">
+                <div className="text-sm text-red-600 font-medium">Expenses</div>
+                <div className="text-xl font-bold text-red-700">{formatCurrency(expense, currency)}</div>
+              </div>
+              <div className={`p-3 rounded-lg ${net >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
+                <div className={`text-sm font-medium ${net >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>Net</div>
+                <div className={`text-xl font-bold ${net >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{formatCurrency(net, currency)}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Transactions</h3>
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                <button
+                  onClick={() => setListType('expense')}
+                  className={`px-3 py-1 text-xs rounded-md ${listType === 'expense' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+                >
+                  Expenses
+                </button>
+                <button
+                  onClick={() => setListType('income')}
+                  className={`px-3 py-1 text-xs rounded-md ${listType === 'income' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
+                >
+                  Income
+                </button>
+              </div>
+            </div>
+
+            {activeList.length === 0 ? (
+              <EmptyState
+                title={`No ${listType === 'expense' ? 'expenses' : 'income'} found`}
+                description="Try changing filters or add a new transaction."
+              />
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th
+                          className="text-left py-2 px-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                          onClick={() => handleSort('date')}
+                        >
+                          Date <SortIcon col="date" />
+                        </th>
+                        <th
+                          className="text-left py-2 px-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                          onClick={() => handleSort('category')}
+                        >
+                          Category <SortIcon col="category" />
+                        </th>
+                        <th className="text-left py-2 px-3 font-medium text-gray-600">
+                          Description
+                        </th>
+                        <th
+                          className="text-right py-2 px-3 font-medium text-gray-600 cursor-pointer select-none hover:text-gray-900"
+                          onClick={() => handleSort('amount')}
+                        >
+                          Amount <SortIcon col="amount" />
+                        </th>
+                        <th className="text-right py-2 px-3 font-medium text-gray-600">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleItems.map((tx: any) => {
+                        const color = getCategoryColor(tx.category);
+                        return (
+                          <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50">
+                            <td className="py-2 px-3 text-gray-600 whitespace-nowrap">
+                              {new Date(tx.date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                              })}
+                            </td>
+                            <td className="py-2 px-3">
+                              <span
+                                style={{
+                                  backgroundColor: color.backgroundColor,
+                                  color: color.color,
+                                  padding: '2px 8px',
+                                  borderRadius: '6px',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {tx.category}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-gray-500 italic">
+                              {tx.description || '—'}
+                            </td>
+                            <td className={`py-2 px-3 text-right font-medium whitespace-nowrap ${tx.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
+                              {tx.type === 'expense' ? '-' : '+'}{formatCurrency(tx.amount, currency)}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <button
+                                  onClick={() => handleEdit(tx)}
+                                  className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(tx.id)}
+                                  className="px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-xs"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {hasMore && <div ref={sentinelRef} className="h-8 mt-2" />}
+                {!hasMore && sortedActiveList.length > 25 && (
+                  <p className="text-center text-xs text-gray-400 mt-3">All {sortedActiveList.length} transactions shown</p>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CHART MODE */}
+      {presentationMode === 'chart' && (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
          {/* LEFT – list of transactions */}
         <div className="lg:col-span-1 order-2 lg:order-1">
@@ -1166,6 +1399,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
