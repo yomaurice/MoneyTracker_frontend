@@ -28,8 +28,9 @@ export default function ClientLayout({
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
   const [showSettings, setShowSettings] = useState(false);
   const [defaultAnalyticsView, setDefaultAnalyticsView] = useState<'chart' | 'table'>('chart');
+  const [defaultInputCurrency, setDefaultInputCurrency] = useState('ILS');
 
-  const { currency, setCurrency } = useCurrency();
+  const { currency, setCurrency, amountDisplayMode, setAmountDisplayMode } = useCurrency();
 
   const handleLogout = async () => {
     await logout();
@@ -54,6 +55,8 @@ export default function ClientLayout({
     if (saved) setTheme(saved);
     const savedView = localStorage.getItem('defaultAnalyticsView') as any;
     if (savedView) setDefaultAnalyticsView(savedView);
+    const savedInputCurrency = localStorage.getItem('defaultInputCurrency');
+    if (savedInputCurrency) setDefaultInputCurrency(savedInputCurrency);
   }, []);
 
 
@@ -156,7 +159,7 @@ export default function ClientLayout({
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm mb-2">Currency</label>
+              <label className="block text-sm mb-2">Display Currency</label>
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
@@ -166,6 +169,35 @@ export default function ClientLayout({
                 <option value="EUR">EUR (€)</option>
                 <option value="GBP">GBP (£)</option>
                 <option value="ILS">ILS (₪)</option>
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm mb-2">Default Input Currency</label>
+              <select
+                value={defaultInputCurrency}
+                onChange={(e) => {
+                  setDefaultInputCurrency(e.target.value);
+                  localStorage.setItem('defaultInputCurrency', e.target.value);
+                }}
+                className="w-full p-2 rounded-lg border"
+              >
+                <option value="USD">USD ($)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="ILS">ILS (₪)</option>
+              </select>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm mb-2">Amount Display</label>
+              <select
+                value={amountDisplayMode}
+                onChange={(e) => setAmountDisplayMode(e.target.value as 'display' | 'entry')}
+                className="w-full p-2 rounded-lg border"
+              >
+                <option value="display">All in display currency</option>
+                <option value="entry">As entered (per transaction currency)</option>
               </select>
             </div>
 

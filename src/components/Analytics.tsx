@@ -134,7 +134,12 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return {};
   });
 
-  const { currency } = useCurrency();
+  const { currency, amountDisplayMode } = useCurrency();
+
+  const fmtAmount = (tx: any) =>
+    amountDisplayMode === 'entry' && tx.currency && tx.currency !== currency
+      ? formatCurrency(tx.amount, tx.currency)
+      : formatCurrency(tx.amount * (tx.exchange_rate || 1), currency);
 
   function getCategoryColor(category: string) {
     if (categoryColors[category]) return categoryColors[category];
@@ -968,7 +973,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                               {tx.description || '—'}
                             </td>
                             <td className={`py-2 px-3 text-right font-medium whitespace-nowrap ${tx.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
-                              {tx.type === 'expense' ? '-' : '+'}{formatCurrency(tx.amount, currency)}
+                              {tx.type === 'expense' ? '-' : '+'}{fmtAmount(tx)}
                             </td>
                             <td className="py-2 px-3 text-right">
                               <div className="flex gap-1 justify-end">
@@ -1096,7 +1101,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                             : 'text-green-600'
                         }
                       >
-                        {formatCurrency(tx.amount, currency)}
+                        {fmtAmount(tx)}
                       </span>
                     </div>
 

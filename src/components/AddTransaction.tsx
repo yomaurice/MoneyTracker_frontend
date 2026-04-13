@@ -4,12 +4,17 @@ import { authFetch } from '../utils/auth_fetch'
 import { API_BASE_URL } from "../utils/api_base";
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
+import { useCurrency } from '../context/CurrencyContext';
+
+const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'ILS'];
+const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', ILS: '₪' };
 
 
 export default function AddTransaction({ onTransactionAdded, transactionToEdit }: { onTransactionAdded: any, transactionToEdit?: any }) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { currency: displayCurrency } = useCurrency();
 
   const idFromQuery = searchParams.get('id');
   const id = transactionToEdit?.id ?? idFromQuery;
@@ -31,6 +36,12 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
   const [message, setMessage] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [recurrenceMonths, setRecurrenceMonths] = useState(1);
+  const [inputCurrency, setInputCurrency] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('defaultInputCurrency') || 'ILS';
+    }
+    return 'ILS';
+  });
 
   const initialized = useRef(false);
 
@@ -69,6 +80,7 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
           description: data.description,
           date: data.date,
         });
+        if (data.currency) setInputCurrency(data.currency);
         setLoading(false);
       })
       .catch(err => {
@@ -90,6 +102,7 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
         description: transactionToEdit.description,
         date: transactionToEdit.date,
       });
+      if (transactionToEdit.currency) setInputCurrency(transactionToEdit.currency);
     }
   }, [transactionToEdit]);
 
@@ -129,9 +142,26 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
     const url = id ? `${API_BASE_URL}/api/transactions/${id}` : `${API_BASE_URL}/api/transactions`;
     const method = id ? 'PUT' : 'POST';
 
+    let exchange_rate = 1.0;
+    if (inputCurrency !== displayCurrency) {
+      try {
+        const rateRes = await authFetch(
+          `${API_BASE_URL}/api/exchange-rate?from=${inputCurrency}&to=${displayCurrency}`
+        );
+        if (rateRes.ok) {
+          const rateData = await rateRes.json();
+          exchange_rate = rateData.rate;
+        }
+      } catch {
+        // silently fall back to 1.0 if rate fetch fails
+      }
+    }
+
     const payload: any = {
       ...formData,
       amount: parseFloat(formData.amount),
+      currency: inputCurrency,
+      exchange_rate,
     };
 
     if (isRecurring && recurrenceMonths > 1) {
@@ -326,20 +356,31 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
           )}
         </div>
 
-        {/* Amount */}
+        {/* Amount + Currency */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
-          <input
-            type="number"
-            name="amount"
-            value={formData.amount}
-            onChange={handleInputChange}
-            step="0.01"
-            min="0.01"
-            placeholder="0.00"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
-            required
-          />
+          <div className="flex gap-2">
+            <select
+              value={inputCurrency}
+              onChange={(e) => setInputCurrency(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-800 font-medium"
+            >
+              {SUPPORTED_CURRENCIES.map(c => (
+                <option key={c} value={c}>{CURRENCY_SYMBOLS[c]} {c}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              name="amount"
+              value={formData.amount}
+              onChange={handleInputChange}
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-md"
+              required
+            />
+          </div>
         </div>
 
         {/* Description */}
