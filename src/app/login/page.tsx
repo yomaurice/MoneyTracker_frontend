@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { waitForBackend } from '../../utils/backendStatus';
 import { API_BASE_URL } from "@/utils/api_base";
@@ -15,24 +15,32 @@ export default function Login() {
 
   const router = useRouter();
   const loginInProgress = useRef(false);
+  const backendReady = useRef(false);
 
+  useEffect(() => {
+    waitForBackend(60000, 2000).then((ready) => {
+      backendReady.current = ready;
+    });
+  }, []);
 
  const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
 
-  if (loginInProgress.current) return; // 🔒 STOP LOOP
+  if (loginInProgress.current) return;
   loginInProgress.current = true;
 
   setErrorMsg('');
-  setWarmingUp(true);
 
-  const backendReady = await waitForBackend(25000, 2000);
-
-  if (!backendReady) {
-    loginInProgress.current = false; // 🔓 unlock on failure
+  if (!backendReady.current) {
+    setWarmingUp(true);
+    const ready = await waitForBackend(60000, 2000);
     setWarmingUp(false);
-    setErrorMsg('Server is taking longer than expected to wake up.');
-    return;
+    if (!ready) {
+      loginInProgress.current = false;
+      setErrorMsg('Server is taking longer than expected to wake up.');
+      return;
+    }
+    backendReady.current = true;
   }
 
   try {

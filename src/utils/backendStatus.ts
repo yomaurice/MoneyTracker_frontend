@@ -1,7 +1,7 @@
 import { getApiBaseUrl } from './api_base';
 
 export async function waitForBackend(
-  timeoutMs = 20000,
+  timeoutMs = 60000,
   intervalMs = 2000
 ): Promise<boolean> {
   const start = Date.now();
