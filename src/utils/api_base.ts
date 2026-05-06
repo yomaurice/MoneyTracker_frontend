@@ -1,24 +1,16 @@
 export function getApiBaseUrl() {
   if (typeof window === "undefined") {
-    console.log("[api_base] SSR mode. Using:", process.env.NEXT_PUBLIC_BACKEND_URL);
-    return process.env.NEXT_PUBLIC_BACKEND_URL;
+    return process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
   }
 
   const host = window.location.hostname;
-  console.log("[api_base] Running in browser:", host);
 
-  if (host.includes("trackex.store")) {
-    console.log("[api_base] Using backend for trackex.store");
-    return "https://moneytrackerfl.onrender.com";
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:5000";
   }
 
-  if (host.includes("vercel.app")) {
-    console.log("[api_base] Using backend for vercel");
-    return "https://moneytrackerfl.onrender.com";
-  }
-
-  console.log("[api_base] Localhost fallback");
-  return "http://localhost:5000";
+  // Production: use relative paths so requests are proxied via Next.js rewrites
+  return "";
 }
 
 
