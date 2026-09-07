@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+import { getApiBaseUrl } from './api_base';
 
 export const authFetch = async (
   url: string,
@@ -17,7 +17,7 @@ export const authFetch = async (
   if (res.status === 401) {
     console.warn('[authFetch] 401 → trying refresh');
 
-    const refreshRes = await fetch(`${API_BASE_URL}/api/refresh`, {
+    const refreshRes = await fetch(`${getApiBaseUrl()}/api/refresh`, {
       method: 'POST',
       credentials: 'include',
     });
