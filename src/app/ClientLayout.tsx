@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
 import { logout } from '../utils/logout';
+import { startSessionKeepalive } from '../utils/session';
 
 export default function ClientLayout({
   children,
@@ -35,6 +36,15 @@ export default function ClientLayout({
   const handleLogout = async () => {
     await logout();
   };
+
+  // ---------------- SESSION ----------------
+  // Refresh the access token on open and whenever the tab regains focus, so a
+  // request never has to discover expiry the hard way. Skipped on the auth
+  // pages, where there is no session to keep alive yet.
+  useEffect(() => {
+    if (isAuthPage) return;
+    return startSessionKeepalive();
+  }, [isAuthPage]);
 
   // ---------------- THEME ----------------
   useEffect(() => {
