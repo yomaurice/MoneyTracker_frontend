@@ -125,6 +125,15 @@ export default function ClientLayout({
                   </span>
                 )}
 
+              <a
+                href="/sync"
+                className="rounded-lg bg-gray-100 px-3 py-2 text-sm
+                           text-gray-700 hover:bg-gray-200
+                           dark:bg-gray-700 dark:text-gray-200"
+              >
+                Import
+              </a>
+
               {pendingReview > 0 && (
                 <a
                   href="/review"
