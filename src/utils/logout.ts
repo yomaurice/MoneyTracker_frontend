@@ -1,8 +1,8 @@
-import { API_BASE_URL } from './api_base';
+import { getApiBaseUrl } from './api_base';
 
 export const logout = async () => {
   try {
-    await fetch(`${API_BASE_URL}/api/logout`, {
+    await fetch(`${getApiBaseUrl()}/api/logout`, {
       method: 'POST',
       credentials: 'include',
     });
