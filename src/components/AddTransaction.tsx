@@ -229,9 +229,13 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
   };
 
   const handleDeleteCategory = async (name: string) => {
-    const res = await authFetch(`${API_BASE_URL}/api/category/delete/${encodeURIComponent(name)}`, {
-      method: 'DELETE',
-    });
+    // Send the type: an income and an expense category may share a name, and
+    // without this the backend picks between them arbitrarily.
+    const res = await authFetch(
+      `${API_BASE_URL}/api/category/delete/${encodeURIComponent(name)}` +
+        `?type=${encodeURIComponent(formData.type)}`,
+      { method: 'DELETE' },
+    );
 
     if (res.ok) {
       setIsSuccess(true);
