@@ -8,6 +8,34 @@ import { markSessionFresh } from "@/utils/session";
 
 
 
+/**
+ * Where to go after signing in.
+ *
+ * Same-origin relative paths only. Without that check, `?returnTo=` would be
+ * an open redirect: a link to our own login page could bounce the user to
+ * someone else's site immediately after they typed their password, which is
+ * exactly the shape a credible phishing flow wants. `//evil.com` is rejected
+ * too -- browsers read a protocol-relative path as an absolute URL.
+ */
+function safeReturnTo(candidate: string | null): string {
+  if (!candidate) return '/';
+  if (!candidate.startsWith('/')) return '/';
+  if (candidate.startsWith('//')) return '/';
+  return candidate;
+}
+
+/**
+ * Read `returnTo` straight off the URL rather than through useSearchParams,
+ * which would opt this whole route out of static prerendering. The page is
+ * already client-only, so there is nothing to gain from the hook.
+ */
+function returnToFromUrl(): string {
+  if (typeof window === 'undefined') return '/';
+  return safeReturnTo(
+    new URLSearchParams(window.location.search).get('returnTo'),
+  );
+}
+
 export default function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -55,7 +83,7 @@ export default function Login() {
     if (res.ok) {
       sessionStorage.setItem('authSettling', 'true');
       markSessionFresh();
-      router.push('/');
+      router.push(returnToFromUrl());
       return;
     }
 

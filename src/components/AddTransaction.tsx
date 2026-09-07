@@ -10,7 +10,58 @@ const SUPPORTED_CURRENCIES = ['USD', 'EUR', 'GBP', 'ILS'];
 const CURRENCY_SYMBOLS: Record<string, string> = { USD: '$', EUR: '€', GBP: '£', ILS: '₪' };
 
 
-export default function AddTransaction({ onTransactionAdded, transactionToEdit }: { onTransactionAdded: any, transactionToEdit?: any }) {
+export type TransactionInitialValues = {
+  type?: string;
+  category?: string;
+  amount?: string | number;
+  description?: string;
+  date?: string;
+  currency?: string;
+};
+
+export type TransactionPayload = {
+  type: string;
+  category: string;
+  amount: number;
+  description: string;
+  date: string;
+  currency: string;
+  exchange_rate: number;
+};
+
+type AddTransactionProps = {
+  onTransactionAdded?: any;
+  transactionToEdit?: any;
+  /** Prefill. Used by the review wizard and by the wallet deep link. */
+  initialValues?: TransactionInitialValues;
+  /** Renders "4 / 9" in the header. */
+  progress?: { current: number; total: number };
+  /** Called after a successful save. */
+  onSaved?: (transactionId?: number) => void;
+  /** Renders a Skip button when supplied. */
+  onSkip?: () => void;
+  /**
+   * Persist through the caller instead of POSTing /api/transactions.
+   *
+   * The review wizard has to save via /api/review/confirm so the staged row is
+   * marked confirmed and the merchant rule is learned in the same commit. This
+   * hook keeps that on one form with one validation path and one currency
+   * handler, rather than growing a second copy of this component.
+   */
+  onSubmit?: (payload: TransactionPayload) => Promise<{ ok: boolean; message?: string }>;
+  submitLabel?: string;
+};
+
+export default function AddTransaction({
+  onTransactionAdded,
+  transactionToEdit,
+  initialValues,
+  progress,
+  onSaved,
+  onSkip,
+  onSubmit,
+  submitLabel,
+}: AddTransactionProps) {
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -128,6 +179,31 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
   }, []);
 
   // ------------------------
+  // 5️⃣ Prefill from initialValues
+  //
+  // Applied whenever they change so the wizard can advance to the next row
+  // without remounting. Only the keys actually supplied are overwritten, so a
+  // partially parsed wallet notification still leaves the rest of the form at
+  // its defaults rather than blanking it.
+  // ------------------------
+  useEffect(() => {
+    if (!initialValues) return;
+
+    setFormData(prev => ({
+      type: initialValues.type ?? prev.type,
+      category: initialValues.category ?? prev.category,
+      amount:
+        initialValues.amount !== undefined && initialValues.amount !== null
+          ? String(initialValues.amount)
+          : prev.amount,
+      description: initialValues.description ?? prev.description,
+      date: initialValues.date ?? prev.date,
+    }));
+
+    if (initialValues.currency) setInputCurrency(initialValues.currency);
+  }, [initialValues]);
+
+  // ------------------------
   // Handlers
   // ------------------------
   const handleInputChange = (e: any) => {
@@ -170,6 +246,19 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
     }
 
     try {
+      // The caller persists when it needs to (the review wizard confirms a
+      // staged row rather than creating a bare transaction).
+      if (onSubmit) {
+        const result = await onSubmit(payload as TransactionPayload);
+        setIsSuccess(result.ok);
+        setMessage(result.message || (result.ok ? 'Saved!' : 'Failed to save'));
+        if (result.ok) {
+          onSaved?.();
+          setTimeout(() => setMessage(''), 1200);
+        }
+        return;
+      }
+
       const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -180,6 +269,15 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
         setIsSuccess(true);
         setMessage(id ? 'Transaction updated!' : 'Transaction added!');
         onTransactionAdded?.();
+
+        let createdId: number | undefined;
+        try {
+          const data = await response.json();
+          createdId = data?.id;
+        } catch {
+          // Older responses carry no body; the save still succeeded.
+        }
+        onSaved?.(createdId);
 
         // Reset for new transaction
         setFormData({
@@ -197,7 +295,7 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
       } else {
         setIsSuccess(false);
         const data = await response.json();
-        setMessage(data.error || 'Failed to save transaction');
+        setMessage(data.error || data.message || 'Failed to save transaction');
       }
     } catch (err) {
       console.error(err);
@@ -254,9 +352,20 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-     <h2 className="text-2xl font-bold mb-8 text-gray-800 dark:text-gray-100 text-center">
-        {id ? 'Edit Transaction' : 'Add New Transaction'}
-      </h2>
+      <div className="mb-8 flex items-center justify-center gap-3">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 text-center">
+          {id ? 'Edit Transaction' : 'Add New Transaction'}
+        </h2>
+        {progress && (
+          <span
+            className="text-sm font-semibold text-gray-500 dark:text-gray-400
+                       bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1"
+            aria-label={`Item ${progress.current} of ${progress.total}`}
+          >
+            {progress.current} / {progress.total}
+          </span>
+        )}
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
 
@@ -439,15 +548,32 @@ export default function AddTransaction({ onTransactionAdded, transactionToEdit }
         </div>
 
         {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-3 px-4 rounded-xl font-semibold text-white transition-all ${
-            loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'
-          }`}
-        >
-          {loading ? 'Saving...' : id ? 'Update Transaction' : 'Add Transaction'}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`flex-1 py-3 px-4 rounded-xl font-semibold text-white transition-all ${
+              loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 hover:scale-[1.02]'
+            }`}
+          >
+            {loading
+              ? 'Saving...'
+              : submitLabel || (id ? 'Update Transaction' : 'Add Transaction')}
+          </button>
+
+          {onSkip && (
+            <button
+              type="button"
+              onClick={onSkip}
+              disabled={loading}
+              className="py-3 px-6 rounded-xl font-semibold border border-gray-300
+                         dark:border-gray-600 text-gray-700 dark:text-gray-200
+                         hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
+              Skip
+            </button>
+          )}
+        </div>
 
         {message && (
           <div
