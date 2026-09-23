@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from './api_base';
+import { refreshSession } from './session';
 
 export const authFetch = async (
   url: string,
@@ -17,14 +17,15 @@ export const authFetch = async (
   if (res.status === 401) {
     console.warn('[authFetch] 401 → trying refresh');
 
-    const refreshRes = await fetch(`${getApiBaseUrl()}/api/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-    });
+    // Shared with the keepalive, and single-flight: several requests failing
+    // at once exchange one refresh token between them instead of one each.
+    // That matters now the backend rotates on every refresh -- a burst of
+    // independent exchanges would look like token reuse.
+    const refreshed = await refreshSession();
 
-    console.log('[authFetch] refresh →', refreshRes.status);
+    console.log('[authFetch] refresh →', refreshed ? 'ok' : 'failed');
 
-    if (refreshRes.ok) {
+    if (refreshed) {
       console.log('[authFetch] retrying original request');
       res = await fetch(url, {
         ...options,

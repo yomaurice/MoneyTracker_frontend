@@ -9,6 +9,7 @@ import { usePathname } from 'next/navigation';
 import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
 import { logout } from '../utils/logout';
+import { startSessionKeepalive } from '../utils/session';
 
 export default function ClientLayout({
   children,
@@ -35,6 +36,41 @@ export default function ClientLayout({
   const handleLogout = async () => {
     await logout();
   };
+
+  // ---------------- PENDING REVIEW ----------------
+  // Charges waiting to be reviewed. Fetched once per navigation rather than
+  // polled: nothing adds to this queue while the user sits on a page, since
+  // ingest happens on a sync or a notification tap.
+  const [pendingReview, setPendingReview] = useState(0);
+
+  useEffect(() => {
+    if (isAuthPage) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await authFetch(`${API_BASE_URL}/api/review/queue`);
+        if (!res.ok) return;
+        const body = await res.json();
+        if (!cancelled) setPendingReview(body.total || 0);
+      } catch {
+        // A missing badge is not worth surfacing an error for.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthPage, pathname]);
+
+  // ---------------- SESSION ----------------
+  // Refresh the access token on open and whenever the tab regains focus, so a
+  // request never has to discover expiry the hard way. Skipped on the auth
+  // pages, where there is no session to keep alive yet.
+  useEffect(() => {
+    if (isAuthPage) return;
+    return startSessionKeepalive();
+  }, [isAuthPage]);
 
   // ---------------- THEME ----------------
   useEffect(() => {
@@ -88,6 +124,29 @@ export default function ClientLayout({
                     <span className="font-semibold">{user.username}</span>
                   </span>
                 )}
+
+              <a
+                href="/sync"
+                className="rounded-lg bg-gray-100 px-3 py-2 text-sm
+                           text-gray-700 hover:bg-gray-200
+                           dark:bg-gray-700 dark:text-gray-200"
+              >
+                Import
+              </a>
+
+              {pendingReview > 0 && (
+                <a
+                  href="/review"
+                  className="flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2
+                             text-sm font-medium text-amber-900 hover:bg-amber-200"
+                >
+                  Review
+                  <span className="rounded-full bg-amber-500 px-2 text-xs font-bold text-white">
+                    {pendingReview}
+                  </span>
+                </a>
+              )}
+
               <button
                 onClick={handleLogout}
                 className="text-sm px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200"
