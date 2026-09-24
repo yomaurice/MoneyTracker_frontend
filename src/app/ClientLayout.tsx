@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useCurrency } from '../context/CurrencyContext';
 import { useUser } from '../context/UserContext';
 import { usePathname } from 'next/navigation';
@@ -126,6 +126,15 @@ export default function ClientLayout({
                 )}
 
               <a
+                href="/transactions"
+                className="rounded-lg bg-gray-100 px-3 py-2 text-sm
+                           text-gray-700 hover:bg-gray-200
+                           dark:bg-gray-700 dark:text-gray-200"
+              >
+                Transactions
+              </a>
+
+              <a
                 href="/sync"
                 className="rounded-lg bg-gray-100 px-3 py-2 text-sm
                            text-gray-700 hover:bg-gray-200
@@ -169,17 +178,17 @@ export default function ClientLayout({
         {isAuthPage ? (
           <>{children}</>
         ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          // Enter animation only. AnimatePresence mode="wait" held the old page
+          // mounted for its exit, which the app router cannot commit around:
+          // client navigation between two non-auth pages refetched forever.
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {children}
+          </motion.div>
         )}
       </main>
 

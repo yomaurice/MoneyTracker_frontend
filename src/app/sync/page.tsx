@@ -35,6 +35,7 @@ type UploadResult = {
   message: string;
   batch: Batch;
   duplicates_skipped: number;
+  rechecked?: number;
   unreadable_rows: number;
 };
 
@@ -296,6 +297,12 @@ function ImportSummary({
       </p>
       <ul className="mt-2 space-y-0.5 text-sm text-green-900">
         <li>{plural(b.received, 'row')} read from the file</li>
+        {(result.rechecked ?? 0) > 0 && (
+          <li>
+            {result.rechecked} from earlier imports, still awaiting review,
+            re-checked
+          </li>
+        )}
         {result.duplicates_skipped > 0 && (
           <li>{result.duplicates_skipped} already imported previously</li>
         )}
