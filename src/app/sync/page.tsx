@@ -98,7 +98,7 @@ export default function SyncPage() {
         if (!res.ok) {
           // The parser's messages say what to do about the file, so they are
           // shown verbatim rather than replaced with something generic.
-          setError(body.message || 'That file could not be imported.');
+          setError(body.message || uploadFailure(res.status));
           return;
         }
 
@@ -275,6 +275,23 @@ export default function SyncPage() {
       </p>
     </div>
   );
+}
+
+/**
+ * What to say when the server gave no message of its own. A timeout from the
+ * proxy in front of the API is the likeliest cause, and "could not be
+ * imported" read as if the file were at fault.
+ */
+function uploadFailure(status: number) {
+  if (status === 504 || status === 502 || status === 503) {
+    return `The server took too long to answer (${status}). It may have been ` +
+      'waking up — nothing was saved, so try the same file again.';
+  }
+  if (status === 413) {
+    return 'That file is too large to upload.';
+  }
+  return `The server failed while importing (error ${status}). Nothing was ` +
+    'saved; try again, and if it keeps failing, note the time for the logs.';
 }
 
 function plural(count: number, noun: string) {
