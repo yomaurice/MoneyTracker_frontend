@@ -1,7 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  CheckCheck,
+  Link2,
+  RefreshCw,
+  SkipForward,
+  Undo2,
+  type LucideIcon,
+} from 'lucide-react';
 
 import AddTransaction, {
   TransactionPayload,
@@ -50,6 +58,8 @@ export default function ReviewPage() {
   const [needsLogin, setNeedsLogin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(0);
+  // What a confirm taught the matcher, shown once the wizard moves on.
+  const learnedNote = useRef('');
 
   const api = useCallback(
     async (path: string, body?: unknown) => {
@@ -104,6 +114,32 @@ export default function ReviewPage() {
   }, []);
 
   /**
+   * Apply what the server learned from a link or confirm to the rest of the
+   * queue: drop charges it has now matched, refresh the suggestions of the
+   * ones still waiting. Only rows ahead of the cursor are touched.
+   */
+  const applyLearning = useCallback(
+    (body: { auto_matched?: number[]; updated?: QueueItem[] }) => {
+      const matched = new Set(body.auto_matched || []);
+      const updated = new Map((body.updated || []).map(u => [u.id, u]));
+      if (!matched.size && !updated.size) return '';
+      setItems(list =>
+        list
+          .map((item, i) =>
+            i > index && updated.has(item.id)
+              ? { ...item, ...updated.get(item.id) }
+              : item,
+          )
+          .filter((item, i) => i <= index || !matched.has(item.id)),
+      );
+      return matched.size
+        ? ` ${matched.size} more from the same place matched automatically.`
+        : '';
+    },
+    [index],
+  );
+
+  /**
    * Confirm through the review endpoint rather than creating a bare
    * transaction, so the staged row is marked confirmed and the merchant rule
    * is learned in the same commit.
@@ -124,7 +160,11 @@ export default function ReviewPage() {
         return { ok: false, message: 'Sign in to save this one.' };
       }
 
-      if (res.ok) return { ok: true, message: 'Saved' };
+      if (res.ok) {
+        const body = await res.json().catch(() => ({}));
+        learnedNote.current = applyLearning(body);
+        return { ok: true, message: 'Saved' };
+      }
 
       const body = await res.json().catch(() => ({}));
       // Confirm rejects the whole batch on any invalid row, so surface the
@@ -132,7 +172,7 @@ export default function ReviewPage() {
       const detail = body.errors?.[0]?.error || body.message;
       return { ok: false, message: detail || 'Could not save' };
     },
-    [current],
+    [current, applyLearning],
   );
 
   const run = useCallback(async (fn: () => Promise<void>) => {
@@ -152,9 +192,12 @@ export default function ReviewPage() {
       run(async () => {
         if (!current) return;
         const body = await api('link', { id: current.id, transaction_id: txn.id });
-        if (body) advance(`Linked to “${txn.description || txn.category}”.`);
+        if (!body) return;
+        advance(
+          `Linked to “${txn.description || txn.category}”.` + applyLearning(body),
+        );
       }),
-    [current, api, advance, run],
+    [current, api, advance, run, applyLearning],
   );
 
   const alreadyIn = useCallback(
@@ -284,7 +327,9 @@ export default function ReviewPage() {
             </span>
           </span>
           <button onClick={recheck} disabled={busy}
-                  className="text-gray-500 hover:underline disabled:opacity-50">
+                  className="flex items-center gap-1 text-gray-500 hover:text-gray-800
+                             dark:hover:text-gray-200 disabled:opacity-50">
+            <RefreshCw size={14} aria-hidden className={busy ? 'animate-spin' : ''} />
             Re-check matches
           </button>
         </div>
@@ -292,16 +337,14 @@ export default function ReviewPage() {
         <ChargeCard item={current} onPick={link} busy={busy} />
 
         <div className="my-4 grid grid-cols-3 gap-2">
-          <button onClick={alreadyIn} disabled={busy} className={ACTION}>
-            Already in
-          </button>
-          <button onClick={skip} disabled={busy} className={ACTION}>
-            Skip
-          </button>
-          <button onClick={back} disabled={busy || skipped === 0} className={ACTION}
-                  title="Bring back the last charge you skipped">
-            ← Back to skipped
-          </button>
+          <ActionButton onClick={alreadyIn} disabled={busy} icon={CheckCheck}
+                        label="Already in" tone="green"
+                        title="It is tracked; I just can't point at which one" />
+          <ActionButton onClick={skip} disabled={busy} icon={SkipForward}
+                        label="Skip" title="Decide later" />
+          <ActionButton onClick={back} disabled={busy || skipped === 0} icon={Undo2}
+                        label="Back to skipped"
+                        title="Bring back the last charge you skipped" />
         </div>
 
         {notice && (
@@ -329,7 +372,10 @@ export default function ReviewPage() {
           }}
           submitLabel="Add as new & next"
           onSubmit={confirm}
-          onSaved={() => advance('Added.', true)}
+          onSaved={() => {
+            advance('Added.' + learnedNote.current, true);
+            learnedNote.current = '';
+          }}
         />
       </div>
 
@@ -348,10 +394,42 @@ export default function ReviewPage() {
   );
 }
 
-const ACTION =
-  'rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-semibold ' +
-  'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 ' +
-  'disabled:opacity-40';
+const TONES = {
+  gray: 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-gray-600 ' +
+        'dark:text-gray-200 dark:hover:bg-gray-700',
+  green: 'border-green-600 text-green-700 hover:bg-green-50 dark:border-green-500 ' +
+         'dark:text-green-400 dark:hover:bg-gray-700',
+};
+
+function ActionButton({
+  onClick,
+  disabled,
+  icon: Icon,
+  label,
+  title,
+  tone = 'gray',
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  icon: LucideIcon;
+  label: string;
+  title?: string;
+  tone?: keyof typeof TONES;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5
+                  text-sm font-semibold transition-colors disabled:opacity-40
+                  ${TONES[tone]}`}
+    >
+      <Icon size={18} aria-hidden />
+      {label}
+    </button>
+  );
+}
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
@@ -420,8 +498,10 @@ function ChargeCard({
                   {c.amount}
                 </span>
                 <button onClick={() => onPick(c)} disabled={busy}
-                        className="whitespace-nowrap rounded-md bg-blue-600 px-2 py-0.5 text-xs
-                                   font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+                        className="flex items-center gap-1 whitespace-nowrap rounded-md bg-blue-600
+                                   px-2.5 py-1 text-xs font-semibold text-white hover:bg-blue-700
+                                   disabled:opacity-50">
+                  <Link2 size={14} aria-hidden />
                   It&apos;s this one
                 </button>
               </li>

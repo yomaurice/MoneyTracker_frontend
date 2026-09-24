@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Link2, Search, X } from 'lucide-react';
 
 import { authFetch } from '@/utils/auth_fetch';
 import { getApiBaseUrl } from '@/utils/api_base';
@@ -103,14 +104,18 @@ export default function TransactionFinder({
           aria-label="Month"
           className={INPUT}
         />
-        <input
-          type="search"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          placeholder="Description or category"
-          aria-label="Search description or category"
-          className={`${INPUT} sm:col-span-2`}
-        />
+        <div className="relative sm:col-span-2">
+          <Search size={14} aria-hidden
+                  className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="search"
+            value={q}
+            onChange={e => setQ(e.target.value)}
+            placeholder="Description or category"
+            aria-label="Search description or category"
+            className={`${INPUT} w-full pl-7`}
+          />
+        </div>
         <select
           value={type}
           onChange={e => setType(e.target.value)}
@@ -144,8 +149,9 @@ export default function TransactionFinder({
           <button
             type="button"
             onClick={() => { setQ(''); setAmount(''); setType(''); }}
-            className="text-xs text-blue-600 hover:underline"
+            className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
           >
+            <X size={12} aria-hidden />
             Clear filters
           </button>
         )}
@@ -190,9 +196,11 @@ export default function TransactionFinder({
                     <button
                       type="button"
                       onClick={() => onPick(t)}
-                      className="whitespace-nowrap rounded-md border border-blue-600 px-2 py-0.5
-                                 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700"
+                      className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border
+                                 border-blue-600 px-2 py-0.5 text-xs text-blue-600 hover:bg-blue-50
+                                 dark:hover:bg-gray-700"
                     >
+                      <Link2 size={12} aria-hidden />
                       {pickLabel}
                     </button>
                   </td>
