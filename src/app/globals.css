@@ -33,3 +33,10 @@ body {
 .dark {
   --chart-grid: #374151;
 }
+:root {
+  --chart-income-bg: #cbd5e1;
+}
+
+.dark {
+  --chart-income-bg: #475569;
+}

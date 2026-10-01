@@ -13,7 +13,73 @@ import {
   CartesianGrid,
   ResponsiveContainer,
   ReferenceLine,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
+
+// Compact tooltip for the stacked expense chart: a small pie of the hovered
+// period's categories instead of a full list, so it doesn't cover the page.
+function CategoryPieTooltip({ active, payload, label, currency }: any) {
+  if (!active || !payload?.length) return null;
+  const slices = payload
+    .filter((p: any) => Number(p.value) > 0)
+    .map((p: any) => ({ name: p.name, value: Number(p.value), fill: p.color || p.fill }))
+    .sort((a: any, b: any) => b.value - a.value);
+  if (!slices.length) return null;
+  const total = slices.reduce((s: number, p: any) => s + p.value, 0);
+  const top = slices.slice(0, 3);
+
+  return (
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 w-44 text-xs">
+      <div className="flex justify-between font-semibold text-gray-800">
+        <span>{label}</span>
+        <span>{formatCurrency(total, currency)}</span>
+      </div>
+      <PieChart width={160} height={120}>
+        <Pie
+          data={slices}
+          dataKey="value"
+          nameKey="name"
+          innerRadius={28}
+          outerRadius={55}
+          stroke="none"
+          isAnimationActive={false}
+        >
+          {slices.map((s: any) => (
+            <Cell key={s.name} fill={s.fill} />
+          ))}
+        </Pie>
+      </PieChart>
+      {top.map((s: any) => (
+        <div key={s.name} className="flex items-center gap-1 text-gray-600">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.fill }} />
+          <span className="truncate flex-1">{s.name}</span>
+          <span>{Math.round((s.value / total) * 100)}%</span>
+        </div>
+      ))}
+      {slices.length > 3 && (
+        <div className="text-gray-400 mt-0.5">+{slices.length - 3} more</div>
+      )}
+    </div>
+  );
+}
+
+function NetTooltip({ active, payload, label, currency }: any) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  const net = row.income - row.expense;
+  return (
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 text-xs space-y-0.5">
+      <div className="font-semibold text-gray-800">{label}</div>
+      <div className="text-gray-600">Income: {formatCurrency(row.income, currency)}</div>
+      <div className="text-gray-600">Expenses: {formatCurrency(row.expense, currency)}</div>
+      <div className={`font-semibold ${net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+        Net: {net >= 0 ? '+' : ''}{formatCurrency(net, currency)}
+      </div>
+    </div>
+  );
+}
 
 type EmptyStateProps = {
   title: string;
@@ -595,6 +661,31 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     expenseList = buildMonthlyExpenseList();
     incomeList = buildMonthlyIncomeList(); // ✅ NEW
   }
+
+  // Income vs expenses per period (yearly / month-across-years only)
+  const netChartData: { label: string; income: number; expense: number }[] = [];
+  if (isYearly) {
+    for (let m = 1; m <= 12; m++) {
+      const mm = String(m).padStart(2, '0');
+      if (selectedYearlyMonth !== 'all' && selectedYearlyMonth !== mm) continue;
+      const vals = rawAnalytics.summary[`${selectedYear}-${mm}`];
+      netChartData.push({
+        label: monthOptions[m - 1].label.slice(0, 3),
+        income: vals?.income || 0,
+        expense: vals?.expense || 0,
+      });
+    }
+  } else if (isMonthAcrossYears) {
+    availableYears.forEach((year) => {
+      const vals = rawAnalytics.summary[`${year}-${selectedYearlyMonth}`];
+      netChartData.push({
+        label: String(year),
+        income: vals?.income || 0,
+        expense: vals?.expense || 0,
+      });
+    });
+  }
+  const hasNetData = netChartData.some((d) => d.income > 0 || d.expense > 0);
 
   const activeList =
     listType === 'expense' ? expenseList : incomeList;
@@ -1248,6 +1339,60 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
           {/* Charts */}
           <div className="bg-white rounded-lg shadow-md p-4 flex-1 space-y-8">
+            {/* INCOME VS EXPENSES CHART */}
+            {(isYearly || isMonthAcrossYears) && hasNetData && (
+              <div className="border-b border-gray-200 pb-4">
+                <h3 className="text-lg font-semibold mb-1 text-gray-800">
+                  Income vs Expenses
+                </h3>
+                <p className="text-xs text-gray-500 mb-2">
+                  Grey bar is income; expense bar is green when under income, red when over.
+                </p>
+                <ResponsiveContainer width="100%" height={260}>
+                  <BarChart
+                    data={netChartData}
+                    margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                    <XAxis xAxisId="bg" dataKey="label" tick={{ fill: 'var(--chart-axis)' }} />
+                    <XAxis xAxisId="fg" dataKey="label" hide />
+                    <YAxis tick={{ fill: 'var(--chart-axis)' }} />
+                    <Tooltip
+                      cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                      wrapperStyle={{ pointerEvents: 'none', outline: 'none' }}
+                      content={<NetTooltip currency={currency} />}
+                    />
+                    <Bar
+                      xAxisId="bg"
+                      dataKey="income"
+                      name="Income"
+                      fill="var(--chart-income-bg)"
+                      radius={[6, 6, 0, 0]}
+                    />
+                    <Bar
+                      xAxisId="fg"
+                      dataKey="expense"
+                      name="Expenses"
+                      shape={(props: any) => {
+                        // Narrower than the income bar so income stays visible behind it
+                        const { x, y, width, height, payload } = props;
+                        return (
+                          <rect
+                            x={x + width * 0.2}
+                            y={y}
+                            width={width * 0.6}
+                            height={height}
+                            rx={4}
+                            fill={payload.expense <= payload.income ? '#16a34a' : '#dc2626'}
+                          />
+                        );
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
             {/* EXPENSES CHART */}
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
@@ -1295,11 +1440,19 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
                         <YAxis tick={{ fill: 'var(--chart-axis)' }} />
 
-                        <Tooltip
-                          formatter={(value) =>
-                            formatCurrency(Number(value ?? 0), currency)
-                          }
-                        />
+                        {isYearly || isMonthAcrossYears ? (
+                          <Tooltip
+                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                            wrapperStyle={{ pointerEvents: 'none', outline: 'none' }}
+                            content={<CategoryPieTooltip currency={currency} />}
+                          />
+                        ) : (
+                          <Tooltip
+                            formatter={(value) =>
+                              formatCurrency(Number(value ?? 0), currency)
+                            }
+                          />
+                        )}
 
                         <ReferenceLine
                           y={avgExpense}
