@@ -18,23 +18,47 @@ import {
   Cell,
 } from 'recharts';
 
-// Compact tooltip for the stacked expense chart: a small pie of the hovered
-// period's categories instead of a full list, so it doesn't cover the page.
-function CategoryPieTooltip({ active, payload, label, currency }: any) {
-  if (!active || !payload?.length) return null;
-  const slices = payload
+type Slice = { name: string; value: number; fill: string };
+
+// Turns a stacked bar's tooltip/click payload into pie slices, largest first.
+const toSlices = (payload: any[] = []): Slice[] =>
+  payload
     .filter((p: any) => Number(p.value) > 0)
     .map((p: any) => ({ name: p.name, value: Number(p.value), fill: p.color || p.fill }))
-    .sort((a: any, b: any) => b.value - a.value);
-  if (!slices.length) return null;
-  const total = slices.reduce((s: number, p: any) => s + p.value, 0);
-  const top = slices.slice(0, 3);
+    .sort((a, b) => b.value - a.value);
+
+// Small pie of one period's categories with the top three listed. When
+// `onExpand` is given, "+N more" is a button that shows the full list.
+function CategoryPie({
+  label,
+  slices,
+  currency,
+  expanded = false,
+  onExpand,
+  onClose,
+}: {
+  label: string;
+  slices: Slice[];
+  currency: string;
+  expanded?: boolean;
+  onExpand?: () => void;
+  onClose?: () => void;
+}) {
+  const total = slices.reduce((s, p) => s + p.value, 0);
+  const shown = expanded ? slices : slices.slice(0, 3);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 w-44 text-xs">
-      <div className="flex justify-between font-semibold text-gray-800">
+    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2 w-48 text-xs">
+      <div className="flex justify-between gap-2 font-semibold text-gray-800">
         <span>{label}</span>
-        <span>{formatCurrency(total, currency)}</span>
+        <span className="flex items-center gap-2">
+          {formatCurrency(total, currency)}
+          {onClose && (
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-700" aria-label="Close">
+              ✕
+            </button>
+          )}
+        </span>
       </div>
       <PieChart width={160} height={120}>
         <Pie
@@ -51,18 +75,34 @@ function CategoryPieTooltip({ active, payload, label, currency }: any) {
           ))}
         </Pie>
       </PieChart>
-      {top.map((s: any) => (
-        <div key={s.name} className="flex items-center gap-1 text-gray-600">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.fill }} />
-          <span className="truncate flex-1">{s.name}</span>
-          <span>{Math.round((s.value / total) * 100)}%</span>
-        </div>
-      ))}
-      {slices.length > 3 && (
-        <div className="text-gray-400 mt-0.5">+{slices.length - 3} more</div>
-      )}
+      <div className={expanded ? 'max-h-48 overflow-y-auto' : ''}>
+        {shown.map((s) => (
+          <div key={s.name} className="flex items-center gap-1 text-gray-600">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: s.fill }} />
+            <span className="truncate flex-1">{s.name}</span>
+            {expanded && <span className="text-gray-500">{formatCurrency(s.value, currency)}</span>}
+            <span className="w-8 text-right">{Math.round((s.value / total) * 100)}%</span>
+          </div>
+        ))}
+      </div>
+      {!expanded && slices.length > 3 &&
+        (onExpand ? (
+          <button onClick={onExpand} className="text-blue-600 hover:underline mt-0.5">
+            +{slices.length - 3} more
+          </button>
+        ) : (
+          <div className="text-gray-400 mt-0.5">+{slices.length - 3} more · click bar for all</div>
+        ))}
     </div>
   );
+}
+
+// Hover tooltip for the stacked charts; hidden while that chart has a pinned pie.
+function CategoryPieTooltip({ active, payload, label, currency, hidden }: any) {
+  if (hidden || !active || !payload?.length) return null;
+  const slices = toSlices(payload);
+  if (!slices.length) return null;
+  return <CategoryPie label={label} slices={slices} currency={currency} />;
 }
 
 function NetTooltip({ active, payload, label, currency }: any) {
@@ -190,6 +230,18 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   const [expenseCategories, setExpenseCategories] = useState<string[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<string[]>([]);
+  // Categories offered in the filter follow the Expenses / Income switch.
+  const filterCategories =
+    listType === 'expense' ? expenseCategories : incomeCategories;
+
+  // Clicking a stacked bar pins its pie so "+N more" can be clicked
+  const [pinned, setPinned] = useState<{
+    chart: 'expense' | 'income';
+    label: string;
+    slices: Slice[];
+    expanded: boolean;
+  } | null>(null);
 
   const [categoryColors, setCategoryColors] = useState<
     Record<string, { backgroundColor: string; color: string }>
@@ -265,6 +317,11 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     }, []);
 
 
+  // ---- Clear the pinned pie when the period changes ----
+  useEffect(() => {
+    setPinned(null);
+  }, [viewMode, selectedYear, selectedYearlyMonth, categoryFilter, presentationMode]);
+
   // ---- Reset visible count when filters or mode change ----
   useEffect(() => {
     setVisibleCount(25);
@@ -289,17 +346,27 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
   // ---- Categories ----
   useEffect(() => {
-    const fetchCategories = async () => {
-      const res = await authFetch(`${API_BASE_URL}/api/categories/expense`);
+    const fetchCategories = async (
+      type: 'expense' | 'income',
+      set: (c: string[]) => void,
+    ) => {
+      const res = await authFetch(`${API_BASE_URL}/api/categories/${type}`);
       if (res.ok) {
-        const data = await res.json();
-        setExpenseCategories(data);
+        set(await res.json());
       } else {
-        console.error('Failed to fetch categories');
+        console.error(`Failed to fetch ${type} categories`);
       }
     };
-    fetchCategories();
+    fetchCategories('expense', setExpenseCategories);
+    fetchCategories('income', setIncomeCategories);
   }, []);
+
+  // A category chosen under one switch position means nothing under the other.
+  useEffect(() => {
+    if (categoryFilter !== 'all' && !filterCategories.includes(categoryFilter)) {
+      setCategoryFilter('all');
+    }
+  }, [listType]);
 
   // ---- Load years from /years endpoint (if available) ----
   useEffect(() => {
@@ -422,6 +489,22 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     return arr;
   };
 
+  // Income sources share a namespace with fixed keys like `income`, so prefix them
+  const incomeBySource = (key: string) =>
+    Object.fromEntries(
+      Object.entries(rawAnalytics?.categoryBreakdown?.[key]?.income || {}).map(
+        ([cat, amt]) => [`inc:${cat}`, amt]
+      )
+    );
+
+  const incomeSources = Array.from(
+    new Set(
+      Object.values(rawAnalytics?.categoryBreakdown || {}).flatMap((b) =>
+        Object.keys(b.income || {})
+      )
+    )
+  ).sort();
+
   const buildYearlyIncomeChartData = () => {
     if (!rawAnalytics?.summary) return [];
     const y = String(selectedYear);
@@ -434,6 +517,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       arr.push({
         monthLabel: monthOptions[m - 1].label,
         income: vals.income || 0,
+        ...incomeBySource(key),
       });
     }
     return arr;
@@ -525,6 +609,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
       arr.push({
         yearLabel: String(year),
         income: vals.income || 0,
+        ...incomeBySource(key),
       });
     });
     return arr;
@@ -740,6 +825,32 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
   const handleEdit = (tx: any) => onEdit(tx);
 
+  const isStacked = isYearly || isMonthAcrossYears;
+
+  const pinOnClick = (chart: 'expense' | 'income') => (state: any) => {
+    const slices = toSlices(state?.activePayload);
+    if (!state?.activeLabel || !slices.length) return;
+    setPinned((prev) =>
+      prev?.chart === chart && prev.label === state.activeLabel
+        ? null
+        : { chart, label: String(state.activeLabel), slices, expanded: false }
+    );
+  };
+
+  const renderPinned = (chart: 'expense' | 'income') =>
+    pinned?.chart === chart && (
+      <div className="absolute top-0 right-0 z-10">
+        <CategoryPie
+          label={pinned.label}
+          slices={pinned.slices}
+          currency={currency}
+          expanded={pinned.expanded}
+          onExpand={() => setPinned({ ...pinned, expanded: true })}
+          onClose={() => setPinned(null)}
+        />
+      </div>
+    );
+
   const handleDelete = async (id: any) => {
     if (!window.confirm('Are you sure you want to delete this transaction?'))
       return;
@@ -794,9 +905,9 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
     : `Expenses by Category (${currentMonthLabel})`;
 
   const incomeChartTitle = isYearly
-    ? 'Income per month'
+    ? 'Income per month (stacked by category)'
     : isMonthAcrossYears
-    ? `Income in ${selectedMonthLabel} (all years)`
+    ? `Income in ${selectedMonthLabel} (stacked by category, all years)`
     : `Income by Category (${currentMonthLabel})`;
 
   const avgExpenseLabel =
@@ -917,10 +1028,35 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             </div>
           )}
 
-          {/* Category filter (expenses only) */}
+          {/* Expenses / Income: drives the category list, the search and
+              the transaction list together */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Categories (expenses)
+              Show
+            </label>
+            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+              {(['expense', 'income'] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setListType(type)}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    listType === type
+                      ? type === 'expense'
+                        ? 'bg-white shadow text-red-700'
+                        : 'bg-white shadow text-green-700'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {type === 'expense' ? 'Expenses' : 'Income'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Category filter, for the chosen side */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {listType === 'expense' ? 'Expense category' : 'Income category'}
             </label>
             <select
               value={categoryFilter}
@@ -928,7 +1064,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
               className="border px-3 py-2 rounded"
             >
               <option value="all">All Categories</option>
-              {expenseCategories.map((cat, idx) => (
+              {filterCategories.map((cat, idx) => (
                 <option key={idx} value={cat}>
                   {cat || '(Unnamed Category)'}
                 </option>
@@ -939,7 +1075,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           {/* Search description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Search Description
+              Search {listType === 'expense' ? 'expenses' : 'income'}
             </label>
             <div className="relative">
               <input
@@ -1024,20 +1160,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           <div className="bg-white rounded-lg shadow-md p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Transactions</h3>
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setListType('expense')}
-                  className={`px-3 py-1 text-xs rounded-md ${listType === 'expense' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
-                >
-                  Expenses
-                </button>
-                <button
-                  onClick={() => setListType('income')}
-                  className={`px-3 py-1 text-xs rounded-md ${listType === 'income' ? 'bg-white shadow text-gray-900' : 'text-gray-500'}`}
-                >
-                  Income
-                </button>
-              </div>
             </div>
 
             {filteredList.length === 0 ? (
@@ -1176,30 +1298,6 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                   ? `Latest Income (${selectedMonthLabel} – all years)`
                   : `Income in ${currentMonthLabel}`}
               </h3>
-
-              {/* Toggle */}
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setListType('expense')}
-                  className={`px-3 py-1 text-xs rounded-md ${
-                    listType === 'expense'
-                      ? 'bg-white shadow text-gray-900'
-                      : 'text-gray-500'
-                  }`}
-                >
-                  Expenses
-                </button>
-                <button
-                  onClick={() => setListType('income')}
-                  className={`px-3 py-1 text-xs rounded-md ${
-                    listType === 'income'
-                      ? 'bg-white shadow text-gray-900'
-                      : 'text-gray-500'
-                  }`}
-                >
-                  Income
-                </button>
-              </div>
             </div>
 
             {/* List */}
@@ -1340,7 +1438,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
           {/* Charts */}
           <div className="bg-white rounded-lg shadow-md p-4 flex-1 space-y-8">
             {/* INCOME VS EXPENSES CHART */}
-            {(isYearly || isMonthAcrossYears) && hasNetData && (
+            {(isYearly || isMonthAcrossYears) && hasNetData && categoryFilter === 'all' && (
               <div className="border-b border-gray-200 pb-4">
                 <h3 className="text-lg font-semibold mb-1 text-gray-800">
                   Income vs Expenses
@@ -1394,6 +1492,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
             )}
 
             {/* EXPENSES CHART */}
+            {(categoryFilter === 'all' || listType === 'expense') && (
             <div>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 {expenseChartTitle}
@@ -1412,10 +1511,13 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                       </div>
                     )}
 
+                    <div className="relative">
+                    {renderPinned('expense')}
                     <ResponsiveContainer width="100%" height={280}>
                       <BarChart
                         data={expenseChartData}
                         margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
+                        onClick={isStacked ? pinOnClick('expense') : undefined}
                       >
                         <CartesianGrid
                           strokeDasharray="3 3"
@@ -1444,7 +1546,7 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                           <Tooltip
                             cursor={{ fill: 'rgba(0,0,0,0.04)' }}
                             wrapperStyle={{ pointerEvents: 'none', outline: 'none' }}
-                            content={<CategoryPieTooltip currency={currency} />}
+                            content={<CategoryPieTooltip currency={currency} hidden={pinned?.chart === 'expense'} />}
                           />
                         ) : (
                           <Tooltip
@@ -1498,13 +1600,17 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         )}
                       </BarChart>
                     </ResponsiveContainer>
+                    </div>
                   </>
                 )}
 
             </div>
 
+            )}
+
             {/* INCOME CHART */}
-            <div className="border-t border-gray-200 pt-4">
+            {(categoryFilter === 'all' || listType === 'income') && (
+            <div className={categoryFilter === 'all' ? 'border-t border-gray-200 pt-4' : ''}>
               <h3 className="text-lg font-semibold mb-4 text-gray-800">
                 {incomeChartTitle}
               </h3>
@@ -1523,10 +1629,13 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                       </div>
                     )}
 
+                    <div className="relative">
+                    {renderPinned('income')}
                     <ResponsiveContainer width="100%" height={260}>
                       <BarChart
                         data={incomeChartData}
                         margin={{ top: 30, right: 30, left: 0, bottom: 0 }}
+                        onClick={isStacked ? pinOnClick('income') : undefined}
                       >
                         <CartesianGrid
                       strokeDasharray="3 3"
@@ -1551,11 +1660,19 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
 
                     <YAxis tick={{ fill: 'var(--chart-axis)' }} />
 
-                        <Tooltip
-                          formatter={(value) =>
-                            formatCurrency(Number(value ?? 0), currency)
-                          }
-                        />
+                        {isStacked ? (
+                          <Tooltip
+                            cursor={{ fill: 'rgba(0,0,0,0.04)' }}
+                            wrapperStyle={{ pointerEvents: 'none', outline: 'none' }}
+                            content={<CategoryPieTooltip currency={currency} hidden={pinned?.chart === 'income'} />}
+                          />
+                        ) : (
+                          <Tooltip
+                            formatter={(value) =>
+                              formatCurrency(Number(value ?? 0), currency)
+                            }
+                          />
+                        )}
 
                         <ReferenceLine
                           y={avgIncome}
@@ -1564,24 +1681,16 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                           ifOverflow="extendDomain"
                         />
 
-                        {isYearly || isMonthAcrossYears ? (
-                          <Bar
-                            dataKey="income"
-                            name="Income"
-                            shape={(props: any) => {
-                              const { x, y, width, height } = props;
-                              return (
-                                <rect
-                                  x={x}
-                                  y={y}
-                                  width={width}
-                                  height={height}
-                                  fill="#22c55e"
-                                  rx={6}
-                                />
-                              );
-                            }}
-                          />
+                        {isStacked ? (
+                          incomeSources.map((source) => (
+                            <Bar
+                              key={source}
+                              dataKey={`inc:${source}`}
+                              stackId="income"
+                              name={source}
+                              fill={getCategoryColor(source)?.backgroundColor || '#22c55e'}
+                            />
+                          ))
                         ) : (
                           <Bar
                             dataKey="income"
@@ -1606,10 +1715,12 @@ export default function Analytics({ onEdit }: { onEdit: (tx: any) => void }) {
                         )}
                       </BarChart>
                     </ResponsiveContainer>
+                    </div>
                   </>
                 )}
 
             </div>
+            )}
           </div>
         </div>
       </div>
