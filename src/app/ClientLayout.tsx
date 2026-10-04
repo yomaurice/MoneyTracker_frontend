@@ -19,6 +19,7 @@ import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
 import { logout } from '../utils/logout';
 import { startSessionKeepalive } from '../utils/session';
+import { flushDrafts } from '../utils/walletDrafts';
 
 export default function ClientLayout({
   children,
@@ -79,6 +80,28 @@ export default function ClientLayout({
   useEffect(() => {
     if (isAuthPage) return;
     return startSessionKeepalive();
+  }, [isAuthPage]);
+
+  // ---------------- WALLET DRAFTS ----------------
+  // Expenses saved from a payment notification while the server was out of
+  // reach wait on this phone; send them when the app opens, and again when it
+  // comes back to the foreground or online -- phones resume a tab far more
+  // often than they reload it.
+  useEffect(() => {
+    if (isAuthPage) return;
+    const flush = () => {
+      flushDrafts().catch(() => {});
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') flush();
+    };
+    flush();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', flush);
+    };
   }, [isAuthPage]);
 
   // ---------------- THEME ----------------

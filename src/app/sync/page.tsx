@@ -268,9 +268,12 @@ export default function SyncPage() {
         </section>
       )}
 
-      <p className="mt-10 text-sm">
+      <p className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm">
         <a href="/settings/accounts" className="text-blue-600 hover:underline">
           Manage banks and cards →
+        </a>
+        <a href="/settings/phone" className="text-blue-600 hover:underline">
+          Capture Google Wallet payments from your phone →
         </a>
       </p>
     </div>
