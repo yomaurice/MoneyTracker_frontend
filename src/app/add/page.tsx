@@ -16,12 +16,15 @@ import { queueDraft, saveWallet, WalletDraft } from '@/utils/walletDrafts';
 type Note = { title: string; text: string; ts: string };
 
 /**
- * Where a payment notification lands: /add#title=…&text=…&ts=….
+ * Where a payment notification lands: /add?title=…&text=…&ts=… (or the same
+ * after a #).
  *
- * Everything needed is in the URL fragment, which browsers never send to a
- * server, so the form is filled the instant the page loads -- no backend
- * round-trip, asleep or not. Only saving needs the backend, and a save that
- * cannot get through is kept on the phone and retried when the app opens.
+ * Everything needed is in the URL, so the form is filled the instant the page
+ * loads -- no backend round-trip, asleep or not. The phone setup uses the
+ * query form because MacroDroid's Open Website encodes only the query part;
+ * Hebrew and spaces after a # could reach the browser mangled. Only saving
+ * needs the backend, and a save that cannot get through is kept on the phone
+ * and retried when the app opens.
  *
  * Never redirects: an expired session is answered with a sign-in box on this
  * page, so the payment and any edits survive it.
@@ -37,7 +40,9 @@ export default function AddFromNotification() {
   const [done, setDone] = useState<'saved' | 'already' | 'queued' | 'skipped' | null>(null);
 
   useEffect(() => {
-    const found = readFragment(window.location.hash);
+    const found =
+      readFragment(window.location.hash) ||
+      readFragment(window.location.search.replace(/^\?/, ''));
     if (found) {
       setNote(found);
       const parsed = parseNotification(found.title, found.text);
