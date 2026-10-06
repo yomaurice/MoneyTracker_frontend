@@ -2,7 +2,16 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
+import {
+  ClipboardCheck,
+  LayoutDashboard,
+  List,
+  LogOut,
+  Settings as SettingsIcon,
+  Upload,
+  type LucideIcon,
+} from 'lucide-react';
 import { useCurrency } from '../context/CurrencyContext';
 import { useUser } from '../context/UserContext';
 import { usePathname } from 'next/navigation';
@@ -10,6 +19,7 @@ import { authFetch } from '../utils/auth_fetch';
 import { API_BASE_URL } from '../utils/api_base';
 import { logout } from '../utils/logout';
 import { startSessionKeepalive } from '../utils/session';
+import { flushDrafts } from '../utils/walletDrafts';
 
 export default function ClientLayout({
   children,
@@ -72,6 +82,28 @@ export default function ClientLayout({
     return startSessionKeepalive();
   }, [isAuthPage]);
 
+  // ---------------- WALLET DRAFTS ----------------
+  // Expenses saved from a payment notification while the server was out of
+  // reach wait on this phone; send them when the app opens, and again when it
+  // comes back to the foreground or online -- phones resume a tab far more
+  // often than they reload it.
+  useEffect(() => {
+    if (isAuthPage) return;
+    const flush = () => {
+      flushDrafts().catch(() => {});
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') flush();
+    };
+    flush();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('online', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('online', flush);
+    };
+  }, [isAuthPage]);
+
   // ---------------- THEME ----------------
   useEffect(() => {
     const root = document.documentElement;
@@ -106,7 +138,8 @@ export default function ClientLayout({
       {/* ---------------- HEADER ---------------- */}
       <header className="border-b bg-white dark:bg-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="relative w-44 h-12">
+          {/* The logo is the way home, as on most sites. */}
+          <a href="/" aria-label="Back to the dashboard" className="relative w-44 h-12">
             <Image
               src="/logo.png"
               alt="Money Tracker Logo"
@@ -114,25 +147,23 @@ export default function ClientLayout({
               priority
               className="object-contain scale-125"
             />
-          </div>
+          </a>
 
           {!isAuthPage && (
-            <div className="flex items-center gap-4">
-             {user?.username && (
-                  <span className="text-sm text-gray-600 dark:text-gray-300">
-                    Hello,&nbsp;
-                    <span className="font-semibold">{user.username}</span>
-                  </span>
-                )}
+            <nav className="flex flex-wrap items-center justify-end gap-2">
+              {user?.username && (
+                <span className="mr-2 text-sm text-gray-600 dark:text-gray-300">
+                  Hello,&nbsp;
+                  <span className="font-semibold">{user.username}</span>
+                </span>
+              )}
 
-              <a
-                href="/sync"
-                className="rounded-lg bg-gray-100 px-3 py-2 text-sm
-                           text-gray-700 hover:bg-gray-200
-                           dark:bg-gray-700 dark:text-gray-200"
-              >
-                Import
-              </a>
+              <NavLink href="/" icon={LayoutDashboard} label="Dashboard"
+                       active={pathname === '/'} />
+              <NavLink href="/transactions" icon={List} label="Transactions"
+                       active={pathname.startsWith('/transactions')} />
+              <NavLink href="/sync" icon={Upload} label="Import"
+                       active={pathname.startsWith('/sync')} />
 
               <a
                 href="/ask"
@@ -149,6 +180,7 @@ export default function ClientLayout({
                   className="flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-2
                              text-sm font-medium text-amber-900 hover:bg-amber-200"
                 >
+                  <ClipboardCheck size={16} aria-hidden />
                   Review
                   <span className="rounded-full bg-amber-500 px-2 text-xs font-bold text-white">
                     {pendingReview}
@@ -157,19 +189,24 @@ export default function ClientLayout({
               )}
 
               <button
-                onClick={handleLogout}
-                className="text-sm px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200"
+                onClick={() => setShowSettings(true)}
+                aria-label="Settings"
+                title="Settings"
+                className="rounded-lg bg-gray-100 p-2 text-gray-700 hover:bg-gray-200
+                           dark:bg-gray-700 dark:text-gray-200"
               >
-                Logout
+                <SettingsIcon size={18} aria-hidden />
               </button>
 
               <button
-                onClick={() => setShowSettings(true)}
-                className="px-3 py-2 rounded-lg text-sm bg-gray-100 dark:bg-gray-700"
+                onClick={handleLogout}
+                aria-label="Log out"
+                title="Log out"
+                className="rounded-lg bg-red-100 p-2 text-red-700 hover:bg-red-200"
               >
-                ⚙ Settings
+                <LogOut size={18} aria-hidden />
               </button>
-            </div>
+            </nav>
           )}
         </div>
       </header>
@@ -178,17 +215,17 @@ export default function ClientLayout({
         {isAuthPage ? (
           <>{children}</>
         ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          // Enter animation only. AnimatePresence mode="wait" held the old page
+          // mounted for its exit, which the app router cannot commit around:
+          // client navigation between two non-auth pages refetched forever.
+          <motion.div
+            key={pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {children}
+          </motion.div>
         )}
       </main>
 
@@ -279,5 +316,32 @@ export default function ClientLayout({
         </div>
       )}
     </>
+  );
+}
+
+function NavLink({
+  href,
+  icon: Icon,
+  label,
+  active,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <a
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm ${
+        active
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200'
+      }`}
+    >
+      <Icon size={16} aria-hidden />
+      {label}
+    </a>
   );
 }

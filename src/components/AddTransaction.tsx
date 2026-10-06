@@ -100,6 +100,16 @@ export default function AddTransaction({
   // 1️⃣ Load Categories when type changes
   // ------------------------
   useEffect(() => {
+    // Last known list first, so the dropdown works at once even when the
+    // backend is asleep -- the wallet deep link opens seconds after paying.
+    const cacheKey = `categories:${formData.type}`;
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) setCategories(JSON.parse(cached));
+    } catch {
+      /* storage blocked */
+    }
+
     authFetch(`${API_BASE_URL}/api/categories/${formData.type}`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
@@ -108,8 +118,14 @@ export default function AddTransaction({
     .then(data => {
       if (Array.isArray(data)) {
         setCategories(data);
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+        } catch {
+          /* storage blocked */
+        }
       }
-    });
+    })
+    .catch(() => {});
   }, [formData.type]);
 
   // ------------------------
