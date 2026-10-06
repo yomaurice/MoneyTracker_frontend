@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   List,
   LogOut,
+  MessageCircleQuestion,
   Settings as SettingsIcon,
   Upload,
   type LucideIcon,
@@ -165,14 +166,8 @@ export default function ClientLayout({
               <NavLink href="/sync" icon={Upload} label="Import"
                        active={pathname.startsWith('/sync')} />
 
-              <a
-                href="/ask"
-                className="rounded-lg bg-gray-100 px-3 py-2 text-sm
-                           text-gray-700 hover:bg-gray-200
-                           dark:bg-gray-700 dark:text-gray-200"
-              >
-                Ask
-              </a>
+              <NavLink href="/ask" icon={MessageCircleQuestion} label="Ask"
+                       active={pathname.startsWith('/ask')} />
 
               {pendingReview > 0 && (
                 <a
