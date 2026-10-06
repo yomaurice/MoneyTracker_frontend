@@ -192,14 +192,14 @@ export default function PhoneSetupPage() {
       {/* ------------------------------------------------------------- */}
       <Step n={4} title="Add four actions, in this order">
         <p className="mb-3 text-sm">
-          In the blue <b>Actions</b> box tap <b>+</b> for each one. The easiest
-          way to find an action is the <b>search box</b> at the top of the list —
-          type its name. Text in <code>{'{curly brackets}'}</code> is MacroDroid
+          In the blue <b>Actions</b> box tap <b>+</b> for each one. Actions are
+          grouped: tap the <b>category</b> shown next to each action below to
+          expand it, then choose the action inside. Text in <code>{'{curly brackets}'}</code> is MacroDroid
           magic text: paste it as is and MacroDroid fills in the payment’s
           details each time.
         </p>
 
-        <Action n="4a" name="Set Variable" why="builds the link the notification opens">
+        <Action n="4a" name="Set Variable" category="Variables" why="builds the link the notification opens">
           <Row label="Select Variable">
             <b>[New Variable]</b> → name <Copyable value="mt_link" inline /> →{' '}
             <b>Global</b> → type <b>String</b>
@@ -207,13 +207,13 @@ export default function PhoneSetupPage() {
           <Row label="Value"><Copyable value={link} /></Row>
         </Action>
 
-        <Action n="4b" name="HTTP Request" why="wakes the server up while you look at your phone">
+        <Action n="4b" name="HTTP Request" category="Web Interactions" why="wakes the server up while you look at your phone">
           <Row label="Request method"><b>GET</b></Row>
           <Row label="URL"><Copyable value={`${DIRECT_API}/api/health`} /></Row>
           <Row label="Everything else">leave as is</Row>
         </Action>
 
-        <Action n="4c" name="HTTP Request" why="sends the charge to your Review queue">
+        <Action n="4c" name="HTTP Request" category="Web Interactions" why="sends the charge to your Review queue">
           <Row label="Request method"><b>POST</b></Row>
           <Row label="URL"><Copyable value={`${DIRECT_API}/api/ingest/wallet`} /></Row>
           <Row label="Timeout (s)">
@@ -235,14 +235,22 @@ export default function PhoneSetupPage() {
           <Row label="Content Body">leave empty</Row>
         </Action>
 
-        <Action n="4d" name="Display Notification" why="the button you tap">
+        <Action n="4d" name="Display Notification" category="Notifications" why="the button you tap">
           <Row label="Title"><Copyable value="Add to MoneyTracker" /></Row>
           <Row label="Text"><Copyable value="{not_title} · {notification}" /></Row>
           <Row label="Clear existing notifications">tick it</Row>
           <Row label="Invoke action, action block or macro on click">
-            choose <b>Action</b> → search <b>Open Website</b> →{' '}
-            <b>Enter url</b>: <Copyable value="{v=mt_link}" inline /> → keep{' '}
-            <b>URL encode parameters</b> ticked → OK
+            <ol className="list-decimal space-y-1 pl-5">
+              <li>Choose <b>Action</b>.</li>
+              <li>Tap the <b>Web Interactions</b> category to expand it — it is a
+                group, not the action itself.</li>
+              <li>Inside it, choose <b>Open Website / HTTP GET</b>.</li>
+              <li><b>Enter url</b>: <Copyable value="{v=mt_link}" inline /></li>
+              <li>Keep <b>URL encode parameters</b> ticked.</li>
+              <li>Leave <b>HTTP GET (No web browser)</b> <b>unticked</b> — ticked,
+                it fetches the link silently and no browser opens.</li>
+              <li>OK.</li>
+            </ol>
           </Row>
         </Action>
 
@@ -315,8 +323,8 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-function Action({ n, name, why, children }: {
-  n: string; name: string; why: string; children: React.ReactNode;
+function Action({ n, name, category, why, children }: {
+  n: string; name: string; category: string; why: string; children: React.ReactNode;
 }) {
   return (
     <div className="mb-3 rounded-md border border-gray-200 p-3 dark:border-gray-600">
@@ -324,6 +332,9 @@ function Action({ n, name, why, children }: {
         <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-semibold
                          dark:bg-gray-700">{n}</span>
         <b>{name}</b> <span className="text-gray-500">— {why}</span>
+      </p>
+      <p className="mb-2 text-xs text-gray-500">
+        Find it under: <b>{category}</b> → <b>{name}</b>
       </p>
       <div className="space-y-1.5">{children}</div>
     </div>
