@@ -58,7 +58,11 @@ export default function AskPage() {
       if (!res.ok) {
         setMessages(history);
         setInput(q);
-        setError(body.message || 'The assistant could not answer.');
+        // Chat errors carry `message`; the server's catch-all handler sends
+        // `error`; a request the server cut off sends no body at all.
+        setError(body.message || body.error || (res.status >= 500
+          ? `The server failed to answer (${res.status}). Try again in a minute.`
+          : 'The assistant could not answer.'));
         return;
       }
 
